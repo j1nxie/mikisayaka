@@ -6,7 +6,7 @@ pub async fn help(
     #[description = "specific command to show help about"] command: Option<String>,
 ) -> Result<(), Error> {
     let config = poise::builtins::HelpConfiguration {
-        extra_text_at_bottom: "Type `s!help command` for more info on a command.",
+        extra_text_at_bottom: "Type `s>help command` for more info on a command.",
         ..Default::default()
     };
     poise::builtins::help(ctx, command.as_deref(), config).await?;
