@@ -11,5 +11,6 @@ pub async fn help(
         ..Default::default()
     };
     poise::builtins::help(ctx, command.as_deref(), config).await?;
+
     Ok(())
 }

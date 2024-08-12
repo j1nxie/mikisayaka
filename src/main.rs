@@ -1,14 +1,22 @@
 use dotenvy::dotenv;
+use migrator::Migrator;
 use poise::serenity_prelude as serenity;
+use sea_orm::{Database, DatabaseConnection};
+use sea_orm_migration::MigratorTrait;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
-struct Data {}
+struct Data {
+    db: DatabaseConnection,
+}
+
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 mod commands;
 mod constants;
+mod migrator;
+mod models;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -24,15 +32,24 @@ async fn main() -> Result<(), anyhow::Error> {
 
     tracing::info!("initializing... please wait warmly.");
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
+    let db_url = std::env::var("DATABASE_URL").expect("missing DATABASE_URL");
     let intents =
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
+    let db = Database::connect(db_url).await?;
+
+    Migrator::up(&db, None).await?;
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::help::help(), commands::status::status()],
+            commands: vec![
+                commands::help::help(),
+                commands::status::status(),
+                commands::role::role(),
+            ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),
-                case_insensitive_commands: true,
+
                 ..Default::default()
             },
             ..Default::default()
@@ -40,7 +57,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {})
+                Ok(Data { db })
             })
         })
         .build();
