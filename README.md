@@ -14,9 +14,9 @@ if you stumbled across this repository, chances are this bot might not be for yo
 
 licensed under either of
 
--   Apache License, Version 2.0
+-   Apache License, Version 2.0 \
     ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
--   MIT license
+-   MIT license \
     ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
 at your option.
