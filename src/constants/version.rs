@@ -18,15 +18,25 @@ const MADOKA_MAGICA: [&str; 12] = [
 pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
 
+    tracing::info!(env!("VERGEN_GIT_SHA"));
+
     if let Ok(semver) = semver {
-        let version_name = format!(
-            "{} - {} [[`{}`](https://github.com/j1nxie/mikisayaka/commit/{})]",
-            semver,
-            MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize],
-            env!("VERGEN_GIT_SHA"),
-            env!("VERGEN_GIT_SHA")
-        );
-        version_name
+        // FIXME: for some reason, vergen is not setting the git sha to "VERGEN_IDEMPOTENT_OUTPUT" in the CI
+        if env!("VERGEN_GIT_SHA") == "VERGEN_IDEMPOTENT_OUTPUT" {
+            format!(
+                "{} - {}",
+                semver,
+                MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize]
+            )
+        } else {
+            format!(
+                "{} - {} [[`{}`](https://github.com/j1nxie/mikisayaka/commit/{})]",
+                semver,
+                MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize],
+                env!("VERGEN_GIT_SHA"),
+                env!("VERGEN_GIT_SHA")
+            )
+        }
     } else {
         tracing::warn!("couldn't parse a semver out of Cargo.toml? defaulting to 0.0.0-unknown.");
         String::from("0.0.0-unknown - No Version Name")
