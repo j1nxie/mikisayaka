@@ -72,8 +72,8 @@ async fn main() -> Result<(), anyhow::Error> {
         })
         .await;
 
-    client.unwrap().start().await.unwrap();
     tracing::info!("finished initializing!");
+    client.unwrap().start().await.unwrap();
 
     Ok(())
 }
