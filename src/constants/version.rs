@@ -18,8 +18,6 @@ const MADOKA_MAGICA: [&str; 12] = [
 pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
 
-    tracing::info!(env!("VERGEN_GIT_SHA"));
-
     if let Ok(semver) = semver {
         // FIXME: for some reason, vergen is not setting the git sha to "VERGEN_IDEMPOTENT_OUTPUT" in the CI
         if env!("VERGEN_GIT_SHA") == "VERGEN_IDEMPOTENT_OUTPUT" {
