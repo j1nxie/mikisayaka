@@ -1,0 +1,12 @@
+services:
+    mikisayaka:
+        hostname: mikisayaka
+        container_name: mikisayaka
+        build:
+            dockerfile: Dockerfile
+        volumes:
+            - ./database:/app/database:rw
+            - ./.env:/app/.env:ro
+        env_file:
+            - .env
+        restart: unless-stopped
