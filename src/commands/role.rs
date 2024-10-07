@@ -40,6 +40,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
         let msg = ctx
             .send(
                 poise::CreateReply::default()
+                    .reply(true)
                     .components(vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(
                         "role_menu",
                         CreateSelectMenuKind::String { options: data },
@@ -106,7 +107,9 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
         msg.delete(ctx).await?;
     } else {
         ctx.send(
-            poise::CreateReply::default().content("no self-assignable roles were configured!"),
+            poise::CreateReply::default()
+                .reply(true)
+                .content("no self-assignable roles were configured!"),
         )
         .await?;
     }
