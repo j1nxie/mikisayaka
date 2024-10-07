@@ -20,9 +20,10 @@ pub fn get_version() -> String {
 
     if let Ok(semver) = semver {
         let version_name = format!(
-            "{} - {} [{}]",
+            "{} - {} [[`{}`](https://github.com/j1nxie/mikisayaka/commit/{})]",
             semver,
             MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize],
+            env!("VERGEN_GIT_SHA"),
             env!("VERGEN_GIT_SHA")
         );
         version_name

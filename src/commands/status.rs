@@ -14,7 +14,7 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
         serenity::CreateEmbed::new()
         .field(
             "about the bot",
-            "[Miki Sayaka](https://github.com/j1nxie/mikisayaka) is a housekeeper Discord bot for Rylie's Nazunacord, written by [j1nxie](https://github.com/j1nxie), using the [poise](https://github.com/serenity-rs/poise) framework.".to_string(),
+            "[Miki Sayaka](https://github.com/j1nxie/mikisayaka) is a housekeeper Discord bot for Rylie's Nazunacord, written by [Rylie](https://github.com/j1nxie), using the [poise](https://github.com/serenity-rs/poise) framework.".to_string(),
             false
         )
         .field("version", get_version(), false)
