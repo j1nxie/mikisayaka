@@ -46,6 +46,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 commands::help::help(),
                 commands::status::status(),
                 commands::role::role(),
+                commands::fluff::squartatrice(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),

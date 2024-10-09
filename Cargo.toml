@@ -8,6 +8,7 @@ build = "build.rs"
 anyhow = "1.0.86"
 dotenvy = "0.15.7"
 poise = { version = "0.6.1", features = ["cache"] }
+rand = "0.8.5"
 rustc_version_runtime = "0.3.0"
 sea-orm = { version = "1.0.0", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
 sea-orm-migration = { version = "1.0.0", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }

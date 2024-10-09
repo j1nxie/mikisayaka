@@ -1322,6 +1322,7 @@ dependencies = [
  "anyhow",
  "dotenvy",
  "poise",
+ "rand",
  "rustc_version_runtime",
  "sea-orm",
  "sea-orm-migration",
