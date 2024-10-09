@@ -1,5 +1,4 @@
 use constants::MD_URL_REGEX;
-use dotenvy::dotenv;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use migrator::Migrator;
 use poise::serenity_prelude::{
@@ -179,7 +178,7 @@ async fn event_handler(
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    dotenv().expect(".env file not found.");
+    let _ = dotenvy::dotenv();
 
     tracing_subscriber::fmt()
         .with_env_filter(
