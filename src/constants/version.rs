@@ -19,7 +19,8 @@ pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
 
     if let Ok(semver) = semver {
-        // FIXME: for some reason, vergen is not setting the git sha to "VERGEN_IDEMPOTENT_OUTPUT" in the CI
+        // FIXME: for some reason, vergen is not setting the git sha properly, instead setting it
+        // to "VERGEN_IDEMPOTENT_OUTPUT" in the CI
         if env!("VERGEN_GIT_SHA") == "VERGEN_IDEMPOTENT_OUTPUT" {
             format!(
                 "{} - {}",
