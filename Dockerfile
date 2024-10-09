@@ -1,8 +1,5 @@
-FROM rust:1.81.0-alpine3.20 AS build
-
-RUN apk add g++ pkgconfig openssl-dev alpine-sdk
-ENV OPENSSL_LIB_DIR=/usr/lib
-ENV OPENSSL_INCLUDE_DIR=/usr/include
+FROM rust:1.81.0-slim-bookworm AS build
+RUN apt update && apt install -y build-essential pkg-config libssl-dev
 
 WORKDIR /app
 COPY Cargo.toml Cargo.toml
@@ -15,7 +12,8 @@ COPY src src
 RUN touch src/main.rs
 RUN cargo build --release
 
-FROM alpine:3.20 AS run
+FROM debian:bookworm-slim AS run
+RUN apt update && apt install -y libssl3
 WORKDIR /app
 COPY --from=build /app/target/release/mikisayaka .
 CMD [ "/app/mikisayaka" ]
