@@ -29,11 +29,10 @@ pub fn get_version() -> String {
             )
         } else {
             format!(
-                "{} - {} [[`{}`](https://github.com/j1nxie/mikisayaka/commit/{})]",
+                "{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
                 semver,
                 MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize],
                 env!("VERGEN_GIT_SHA"),
-                env!("VERGEN_GIT_SHA")
             )
         }
     } else {
