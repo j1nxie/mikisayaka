@@ -200,7 +200,6 @@ async fn main() -> Result<(), anyhow::Error> {
     Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
-    let md_client = MangaDexClient::default();
     let md_client_id = std::env::var("MANGADEX_CLIENT_ID").map_err(|_| {
         tracing::warn!("missing mangadex client id. manga commands will not be initialized.");
     });
@@ -208,9 +207,9 @@ async fn main() -> Result<(), anyhow::Error> {
         tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
     });
 
-    let mut md: Option<MangaDexClient> = None;
+    let md = if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
+        let md_client = MangaDexClient::default();
 
-    if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
         md_client
             .set_client_info(&ClientInfo {
                 client_id,
@@ -218,8 +217,10 @@ async fn main() -> Result<(), anyhow::Error> {
             })
             .await?;
 
-        md = Some(md_client);
-    }
+        Some(md_client)
+    } else {
+        None
+    };
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
