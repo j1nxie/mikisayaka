@@ -5,6 +5,12 @@ a small Discord bot meant for housekeeping tasks in Rylie's Nazunacord!
 ## features
 
 - self-assignable roles
+- watch #weeb for mangadex links and automatically return data
+
+## todo
+
+- [ ] add / remove manga for tracking new chapter updates
+- [ ] actually tracking new chapter updates
 
 ## usage
 
