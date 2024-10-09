@@ -12,6 +12,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
 struct Data {
+    manga_update_channel_id: Option<ChannelId>,
     db: DatabaseConnection,
     md: Option<MangaDexClient>,
 }
@@ -33,14 +34,8 @@ async fn event_handler(
     if let serenity::FullEvent::Message { new_message } = event {
         if new_message.author.bot
             || data.md.is_none()
-            || std::env::var("MANGA_UPDATE_CHANNEL_ID").is_err()
-            || new_message.channel_id
-                != ChannelId::new(
-                    std::env::var("MANGA_UPDATE_CHANNEL_ID")
-                        .unwrap()
-                        .parse::<u64>()
-                        .unwrap(),
-                )
+            || data.manga_update_channel_id.is_none()
+            || new_message.channel_id != data.manga_update_channel_id.unwrap()
         {
             return Ok(());
         }
@@ -246,9 +241,26 @@ async fn main() -> Result<(), anyhow::Error> {
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
+            let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
+                if let Ok(id) = id.parse::<u64>() {
+                    Some(ChannelId::new(id))
+                } else {
+                    tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+                    None
+                }
+            } else {
+                tracing::warn!(
+                    "no manga update channel id found. mangadex links will not be watched."
+                );
+                None
+            };
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data { db, md })
+                Ok(Data {
+                    manga_update_channel_id,
+                    db,
+                    md,
+                })
             })
         })
         .build();
