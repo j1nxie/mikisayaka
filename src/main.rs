@@ -1,12 +1,9 @@
 use constants::MD_URL_REGEX;
 use dotenvy::dotenv;
-use mangadex_api::{
-    v5::{schema::oauth::ClientInfo, statistics},
-    MangaDexClient,
-};
+use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use migrator::Migrator;
 use poise::serenity_prelude::{
-    self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, MessageBuilder,
+    self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
     MessageReference,
 };
 use sea_orm::{Database, DatabaseConnection};
@@ -56,6 +53,17 @@ async fn event_handler(
             }
 
             let uuid = uuid.unwrap();
+
+            let mut msg = new_message
+                .channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::default()
+                        .reference_message(MessageReference::from(new_message))
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("got a mangadex link! fetching data..."),
+                )
+                .await?;
 
             let manga = data
                 .md
@@ -112,57 +120,63 @@ async fn event_handler(
 
             let statistics = statistics.statistics.get(&uuid).unwrap();
 
-            new_message
-                .channel_id
-                .send_message(
-                    ctx,
-                    CreateMessage::default()
-                        .reference_message(MessageReference::from(new_message))
-                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                        .embed(
-                            CreateEmbed::default()
-                                .title(title)
-                                .url(format!("https://mangadex.org/title/{}", manga_id))
-                                // .description(
-                                //     manga
-                                //         .description
-                                //         .get(&mangadex_api_types_rust::Language::English)
-                                //         .unwrap(),
-                                // )
-                                .field("status", manga.status.to_string(), true)
-                                .field(
-                                    "year",
-                                    if manga.year.is_some() {
-                                        manga.year.unwrap().to_string()
-                                    } else {
-                                        "unknown".to_string()
-                                    },
-                                    true,
-                                )
-                                .field(
-                                    "demographic",
-                                    if manga.publication_demographic.is_some() {
-                                        manga.publication_demographic.unwrap().to_string()
-                                    } else {
-                                        "unknown".to_string()
-                                    },
-                                    true,
-                                )
-                                .field(
-                                    "rating",
-                                    if statistics.rating.average.is_some() {
-                                        statistics.rating.average.unwrap().to_string()
-                                    } else {
-                                        "unknown".to_string()
-                                    },
-                                    true,
-                                )
-                                .field("follows", statistics.follows.to_string(), true)
-                                .field("", "", true)
-                                .field("tags", tags, false),
-                        ),
-                )
-                .await?;
+            msg.edit(
+                ctx,
+                EditMessage::default()
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .content("here's your manga!")
+                    .embed(
+                        CreateEmbed::default()
+                            .title(title)
+                            .url(format!("https://mangadex.org/title/{}", manga_id))
+                            // .description(
+                            //     manga
+                            //         .description
+                            //         .get(&mangadex_api_types_rust::Language::English)
+                            //         .unwrap(),
+                            // )
+                            .field("status", manga.status.to_string(), true)
+                            .field(
+                                "year",
+                                if let Some(year) = manga.year {
+                                    year.to_string()
+                                } else {
+                                    "unknown".to_string()
+                                },
+                                true,
+                            )
+                            .field(
+                                "demographic",
+                                if let Some(demographic) = manga.publication_demographic {
+                                    demographic.to_string()
+                                } else {
+                                    "unknown".to_string()
+                                },
+                                true,
+                            )
+                            .field(
+                                "rating",
+                                if let Some(avg) = statistics.rating.average {
+                                    avg.to_string()
+                                } else {
+                                    "unknown".to_string()
+                                },
+                                true,
+                            )
+                            .field("follows", statistics.follows.to_string(), true)
+                            .field(
+                                "content rating",
+                                if let Some(content_rating) = manga.content_rating {
+                                    content_rating.to_string()
+                                } else {
+                                    "unknown".to_string()
+                                },
+                                true,
+                            )
+                            .field("tags", tags, false),
+                    ),
+            )
+            .await?;
         }
     }
     Ok(())
