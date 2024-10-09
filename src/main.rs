@@ -1,6 +1,14 @@
+use constants::MD_URL_REGEX;
 use dotenvy::dotenv;
+use mangadex_api::{
+    v5::{schema::oauth::ClientInfo, statistics},
+    MangaDexClient,
+};
 use migrator::Migrator;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{
+    self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, MessageBuilder,
+    MessageReference,
+};
 use sea_orm::{Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
 use tracing::level_filters::LevelFilter;
@@ -8,6 +16,7 @@ use tracing_subscriber::EnvFilter;
 
 struct Data {
     db: DatabaseConnection,
+    md: Option<MangaDexClient>,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -17,6 +26,147 @@ mod commands;
 mod constants;
 mod migrator;
 mod models;
+
+async fn event_handler(
+    ctx: &serenity::Context,
+    event: &serenity::FullEvent,
+    _framework: poise::FrameworkContext<'_, Data, Error>,
+    data: &Data,
+) -> Result<(), Error> {
+    if let serenity::FullEvent::Message { new_message } = event {
+        if new_message.author.bot
+            || data.md.is_none()
+            || std::env::var("MANGA_UPDATE_CHANNEL_ID").is_err()
+            || new_message.channel_id
+                != ChannelId::new(
+                    std::env::var("MANGA_UPDATE_CHANNEL_ID")
+                        .unwrap()
+                        .parse::<u64>()
+                        .unwrap(),
+                )
+        {
+            return Ok(());
+        }
+
+        if let Some(captures) = MD_URL_REGEX.captures(&new_message.content) {
+            let uuid = uuid::Uuid::try_parse(&captures[1]);
+
+            if uuid.is_err() {
+                return Ok(());
+            }
+
+            let uuid = uuid.unwrap();
+
+            let manga = data
+                .md
+                .as_ref()
+                .unwrap()
+                .manga()
+                .id(uuid)
+                .get()
+                .send()
+                .await?;
+
+            let manga_id = manga.data.id;
+            let manga = manga.data.attributes;
+
+            let en_title = manga.title.get(&mangadex_api_types_rust::Language::English);
+
+            let title = if let Some(en_title) = en_title {
+                en_title
+            } else if let Some(jp_ro) = manga
+                .title
+                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+            {
+                jp_ro
+            } else {
+                manga
+                    .title
+                    .get(&mangadex_api_types_rust::Language::Japanese)
+                    .unwrap()
+            };
+
+            let tags = manga
+                .tags
+                .iter()
+                .map(|tag| {
+                    tag.attributes
+                        .name
+                        .get(&mangadex_api_types_rust::Language::English)
+                        .unwrap()
+                        .to_string()
+                })
+                .collect::<Vec<String>>()
+                .join(", ");
+
+            let statistics = data
+                .md
+                .as_ref()
+                .unwrap()
+                .statistics()
+                .manga()
+                .id(uuid)
+                .get()
+                .send()
+                .await?;
+
+            let statistics = statistics.statistics.get(&uuid).unwrap();
+
+            new_message
+                .channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::default()
+                        .reference_message(MessageReference::from(new_message))
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .embed(
+                            CreateEmbed::default()
+                                .title(title)
+                                .url(format!("https://mangadex.org/title/{}", manga_id))
+                                // .description(
+                                //     manga
+                                //         .description
+                                //         .get(&mangadex_api_types_rust::Language::English)
+                                //         .unwrap(),
+                                // )
+                                .field("status", manga.status.to_string(), true)
+                                .field(
+                                    "year",
+                                    if manga.year.is_some() {
+                                        manga.year.unwrap().to_string()
+                                    } else {
+                                        "unknown".to_string()
+                                    },
+                                    true,
+                                )
+                                .field(
+                                    "demographic",
+                                    if manga.publication_demographic.is_some() {
+                                        manga.publication_demographic.unwrap().to_string()
+                                    } else {
+                                        "unknown".to_string()
+                                    },
+                                    true,
+                                )
+                                .field(
+                                    "rating",
+                                    if statistics.rating.average.is_some() {
+                                        statistics.rating.average.unwrap().to_string()
+                                    } else {
+                                        "unknown".to_string()
+                                    },
+                                    true,
+                                )
+                                .field("follows", statistics.follows.to_string(), true)
+                                .field("", "", true)
+                                .field("tags", tags, false),
+                        ),
+                )
+                .await?;
+        }
+    }
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -36,7 +186,30 @@ async fn main() -> Result<(), anyhow::Error> {
     let intents =
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
+    tracing::info!("initializing database connection...");
     let db = Database::connect(db_url).await?;
+
+    tracing::info!("initializing mangadex client...");
+    let md_client = MangaDexClient::default();
+    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").map_err(|_| {
+        tracing::warn!("missing mangadex client id. manga commands will not be initialized.");
+    });
+    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").map_err(|_| {
+        tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
+    });
+
+    let mut md: Option<MangaDexClient> = None;
+
+    if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
+        md_client
+            .set_client_info(&ClientInfo {
+                client_id,
+                client_secret,
+            })
+            .await?;
+
+        md = Some(md_client);
+    }
 
     Migrator::up(&db, None).await?;
 
@@ -47,17 +220,21 @@ async fn main() -> Result<(), anyhow::Error> {
                 commands::status::status(),
                 commands::role::role(),
                 commands::fluff::squartatrice(),
+                commands::manga::manga(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),
                 ..Default::default()
+            },
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
             },
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data { db })
+                Ok(Data { db, md })
             })
         })
         .build();

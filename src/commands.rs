@@ -2,6 +2,7 @@ use crate::Context;
 
 pub mod fluff;
 pub mod help;
+pub mod manga;
 pub mod role;
 pub mod status;
 
