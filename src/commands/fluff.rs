@@ -1,3 +1,5 @@
+use poise::serenity_prelude::CreateAllowedMentions;
+
 use crate::{Context, Error};
 
 #[poise::command(prefix_command, slash_command)]
@@ -10,8 +12,13 @@ pub async fn squartatrice(ctx: Context<'_>) -> Result<(), Error> {
         "https://www.youtube.com/watch?v=a2qUNdQySgw"
     };
 
-    ctx.send(poise::CreateReply::default().reply(true).content(content))
-        .await?;
+    ctx.send(
+        poise::CreateReply::default()
+            .reply(true)
+            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+            .content(content),
+    )
+    .await?;
 
     Ok(())
 }

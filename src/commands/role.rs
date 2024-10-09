@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use poise::serenity_prelude::{
-    ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow, CreateEmbed,
-    CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, RoleId,
+    ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow,
+    CreateAllowedMentions, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind,
+    CreateSelectMenuOption, EditMessage, RoleId,
 };
 use sea_orm::{EntityTrait, PaginatorTrait};
 
@@ -43,6 +44,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
             .send(
                 poise::CreateReply::default()
                     .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                     .components(vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(
                         "role_menu",
                         CreateSelectMenuKind::String { options: data },
@@ -111,6 +113,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
         ctx.send(
             poise::CreateReply::default()
                 .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("no self-assignable roles were configured!"),
         )
         .await?;
@@ -162,6 +165,7 @@ pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
             ctx.send(
                 poise::CreateReply::default()
                     .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                     .content("you don't have any self-assignable roles!"),
             )
             .await?;
@@ -240,6 +244,7 @@ pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
         ctx.send(
             poise::CreateReply::default()
                 .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("no self-assignable roles were configured!"),
         )
         .await?;
