@@ -2,6 +2,9 @@ use poise::serenity_prelude::CreateAllowedMentions;
 
 use crate::{Context, Error};
 
+/// あたしって、ほんとばか。
+///
+/// you want to listen to squartatrice? here you go.
 #[poise::command(prefix_command, slash_command)]
 pub async fn squartatrice(ctx: Context<'_>) -> Result<(), Error> {
     let random_number = rand::random::<u8>();
