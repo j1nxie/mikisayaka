@@ -197,6 +197,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     tracing::info!("initializing database connection...");
     let db = Database::connect(db_url).await?;
+    Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
     let md_client = MangaDexClient::default();
@@ -219,8 +220,6 @@ async fn main() -> Result<(), anyhow::Error> {
 
         md = Some(md_client);
     }
-
-    Migrator::up(&db, None).await?;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
