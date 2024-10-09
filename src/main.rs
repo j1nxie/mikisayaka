@@ -49,7 +49,6 @@ async fn main() -> Result<(), anyhow::Error> {
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),
-
                 ..Default::default()
             },
             ..Default::default()
