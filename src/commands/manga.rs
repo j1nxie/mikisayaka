@@ -275,11 +275,15 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             poise::CreateReply::default()
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .embed(CreateEmbed::default().field(
-                    "list of tracked manga titles",
-                    manga_list_str,
-                    false,
-                )),
+                .embed(
+                    CreateEmbed::default()
+                        .title("list of tracked manga titles")
+                        .url(format!(
+                            "https://mangadex.org/list/{}",
+                            ctx.data().mdlist_id.unwrap()
+                        ))
+                        .description(manga_list_str),
+                ),
         )
         .await?;
     }
