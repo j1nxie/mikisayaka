@@ -1,10 +1,8 @@
 use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
-use mangadex_api_schema_rust::v5::MangaDexErrorResponse;
-use mangadex_api_types_rust::ReferenceExpansionResource;
-use poise::serenity_prelude::{self, CreateAllowedMentions, CreateEmbed};
+use poise::serenity_prelude::{CreateAllowedMentions, CreateEmbed};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
-/// check mangadex client's availability
+/// check mangadex client's availability.
 async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     if ctx.data().md.is_none() {
         ctx.send(
@@ -33,7 +31,7 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// commands related to self-assignable roles.
+/// commands related to manga tracking.
 #[poise::command(
     slash_command,
     prefix_command,
@@ -45,7 +43,7 @@ pub async fn manga(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// add a manga to the tracking list
+/// add a manga to the tracking list.
 #[poise::command(prefix_command, slash_command)]
 pub async fn add(
     ctx: Context<'_>,
@@ -201,7 +199,7 @@ pub async fn add(
     Ok(())
 }
 
-/// print the currently tracked list
+/// print the currently tracked list.
 #[poise::command(prefix_command, slash_command)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
@@ -293,6 +291,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// sync the local database to the mdlist.
 #[poise::command(prefix_command, slash_command)]
 pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
