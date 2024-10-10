@@ -1,5 +1,8 @@
-use crate::{Context, Error};
-use poise::serenity_prelude::{self as serenity, CreateAllowedMentions};
+use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
+use mangadex_api_schema_rust::v5::MangaDexErrorResponse;
+use mangadex_api_types_rust::ReferenceExpansionResource;
+use poise::serenity_prelude::{CreateAllowedMentions, CreateEmbed};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
 /// check mangadex client's availability
 async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
@@ -15,6 +18,18 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
         return Err("mangadex client is not initialized.".into());
     }
 
+    if ctx.data().mdlist_id.is_none() {
+        ctx.send(
+            poise::CreateReply::default()
+                .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .content("mdlist uuid is not set. this command will not work."),
+        )
+        .await?;
+
+        return Err("mdlist uuid is not set.".into());
+    }
+
     Ok(())
 }
 
@@ -24,7 +39,7 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     prefix_command,
     subcommand_required,
     guild_only,
-    subcommands("add")
+    subcommands("add", "list")
 )]
 pub async fn manga(_: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -34,27 +49,63 @@ pub async fn manga(_: Context<'_>) -> Result<(), Error> {
 #[poise::command(prefix_command, slash_command)]
 pub async fn add(
     ctx: Context<'_>,
-    #[description = "mangadex uuid of the manga you want to add."] uuid: String,
+    #[description = "mangadex uuid or link of the manga you want to add."] input: String,
 ) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
         return Ok(());
     }
 
-    let uuid = uuid::Uuid::try_parse(&uuid);
+    ctx.data()
+        .md
+        .as_ref()
+        .unwrap()
+        .oauth()
+        .refresh()
+        .send()
+        .await?;
 
-    if uuid.is_err() {
+    let uuid = if let Some(captures) = MD_URL_REGEX.captures(&input) {
+        if let Ok(u) = uuid::Uuid::try_parse(&captures[1]) {
+            tracing::info!("got uuid from link: {}", u);
+            u
+        } else {
+            ctx.send(
+                poise::CreateReply::default()
+                    .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .content("invalid uuid supplied."),
+            )
+            .await?;
+
+            return Ok(());
+        }
+    } else if let Ok(u) = uuid::Uuid::try_parse(&input) {
+        tracing::info!("got uuid from input string: {}", u);
+        u
+    } else {
         ctx.send(
             poise::CreateReply::default()
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .content("invalid uuid supplied."),
+                .content("invalid link supplied."),
         )
         .await?;
 
         return Ok(());
-    }
+    };
 
-    let uuid = uuid.unwrap();
+    let manga_list = manga::Entity::find().all(&ctx.data().db).await?;
+
+    let mdlist = ctx
+        .data()
+        .md
+        .as_ref()
+        .unwrap()
+        .custom_list()
+        .id(ctx.data().mdlist_id.unwrap())
+        .get()
+        .send()
+        .await?;
 
     let manga = ctx
         .data()
@@ -67,51 +118,171 @@ pub async fn add(
         .send()
         .await?;
 
-    let chapter_id = manga.data.attributes.latest_uploaded_chapter;
+    let manga = manga.data.attributes;
 
-    if chapter_id.is_none() {
+    let title = if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English)
+    {
+        en_title
+    } else if let Some(jp_ro) = manga
+        .title
+        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+    {
+        jp_ro
+    } else {
+        manga
+            .title
+            .get(&mangadex_api_types_rust::Language::Japanese)
+            .unwrap()
+    };
+
+    if manga::Entity::find()
+        .filter(manga::Column::MangaDexId.eq(uuid))
+        .one(&ctx.data().db)
+        .await?
+        .is_some()
+    {
         ctx.send(
             poise::CreateReply::default()
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .content("manga has no chapters."),
+                .content(format!(
+                    "title **{}** is already in the tracking list.",
+                    title
+                )),
         )
         .await?;
 
         return Ok(());
     }
 
-    let chapter_id = chapter_id.unwrap();
+    let model = manga::ActiveModel {
+        manga_dex_id: Set(uuid),
+        last_updated: Set(chrono::Utc::now().naive_utc()),
+        ..Default::default()
+    };
 
-    let chapter = ctx
+    model.insert(&ctx.data().db).await?;
+
+    let mut builder = ctx
         .data()
         .md
         .as_ref()
         .unwrap()
-        .chapter()
-        .id(chapter_id)
-        .get()
+        .custom_list()
+        .id(ctx.data().mdlist_id.unwrap())
+        .put();
+
+    for manga in manga_list {
+        builder.add_manga_id(manga.manga_dex_id);
+    }
+
+    let mut resp_string = String::new();
+
+    let _ = builder
+        .add_manga_id(uuid)
+        .version(mdlist.data.attributes.version)
+        .build()
+        .unwrap()
         .send()
-        .await?;
+        .await
+        .map_err(|e| {
+            tracing::warn!("an error happened while updating the mdlist: {}", e);
+            resp_string = "*failed to update the mdlist. it will (hopefully) be updated the next time you add a manga. you can also try running `s>manga sync` to sync the mdlist.*\n\n".to_string()
+        });
 
     ctx.send(
         poise::CreateReply::default()
             .reply(true)
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-            .content("this feature is not yet implemented"),
+            .content(resp_string + &format!("added title **{}** to the tracking list! you will be notified when a new chapter is uploaded.", title)),
     )
     .await?;
 
-    // ctx.send(
-    //     poise::CreateReply::default()
-    //         .reply(true)
-    //         .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-    //         .content(format!(
-    //             "manga result: {:?}\nlast chapter date: {:?}",
-    //             manga.data.attributes.latest_uploaded_chapter, chapter.data.attributes.created_at,
-    //         )),
-    // )
-    // .await?;
+    Ok(())
+}
+
+/// print the currently tracked list
+#[poise::command(prefix_command, slash_command)]
+pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
+    if check_md_client(ctx).await.is_err() {
+        return Ok(());
+    }
+
+    let list = manga::Entity::find()
+        .paginate(&ctx.data().db, 10)
+        .fetch_and_next()
+        .await
+        .map_err(|e| {
+            tracing::error!("there was an error fetching from database: {}", e);
+            e
+        })?;
+
+    if let Some(manga_list) = list {
+        if manga_list.is_empty() {
+            ctx.send(
+                poise::CreateReply::default()
+                    .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .content("there are no manga in the tracking list."),
+            )
+            .await?;
+
+            return Ok(());
+        }
+
+        let mut manga_list_str = String::new();
+
+        for (idx, manga) in manga_list.iter().enumerate() {
+            let manga_id = manga.manga_dex_id;
+
+            let manga = ctx
+                .data()
+                .md
+                .as_ref()
+                .unwrap()
+                .manga()
+                .id(manga.manga_dex_id)
+                .get()
+                .send()
+                .await?;
+
+            let manga = manga.data.attributes;
+
+            let title = if let Some(en_title) =
+                manga.title.get(&mangadex_api_types_rust::Language::English)
+            {
+                en_title
+            } else if let Some(jp_ro) = manga
+                .title
+                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+            {
+                jp_ro
+            } else {
+                manga
+                    .title
+                    .get(&mangadex_api_types_rust::Language::Japanese)
+                    .unwrap()
+            };
+
+            manga_list_str = manga_list_str
+                + &format!(
+                    "{}. [{}](https://mangadex.org/title/{})\n",
+                    idx, title, manga_id,
+                );
+        }
+
+        ctx.send(
+            poise::CreateReply::default()
+                .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .embed(CreateEmbed::default().field(
+                    "list of tracked manga titles",
+                    manga_list_str,
+                    false,
+                )),
+        )
+        .await?;
+    }
 
     Ok(())
 }

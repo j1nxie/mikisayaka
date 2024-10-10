@@ -1,5 +1,6 @@
 use constants::MD_URL_REGEX;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
+use mangadex_api_types_rust::{Password, Username};
 use migrator::Migrator;
 use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
@@ -14,6 +15,7 @@ struct Data {
     manga_update_channel_id: Option<ChannelId>,
     db: DatabaseConnection,
     md: Option<MangaDexClient>,
+    mdlist_id: Option<uuid::Uuid>,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -35,6 +37,7 @@ async fn event_handler(
             || data.md.is_none()
             || data.manga_update_channel_id.is_none()
             || new_message.channel_id != data.manga_update_channel_id.unwrap()
+            || new_message.content.starts_with("s>")
         {
             return Ok(());
         }
@@ -59,6 +62,8 @@ async fn event_handler(
                 )
                 .await?;
 
+            // FIXME: better error handling here
+            // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
             let manga = data
                 .md
                 .as_ref()
@@ -205,6 +210,15 @@ async fn main() -> Result<(), anyhow::Error> {
     let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").map_err(|_| {
         tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
     });
+    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").map_err(|_| {
+        tracing::warn!("missing mangadex mdlist id. manga commands will not be initialized.");
+    });
+    let md_username = std::env::var("MANGADEX_USERNAME").map_err(|_| {
+        tracing::warn!("missing mangadex username. mdlist commands will not be initialized.");
+    });
+    let md_password = std::env::var("MANGADEX_PASSWORD").map_err(|_| {
+        tracing::warn!("missing mangadex password. mdlist commands will not be initialized.");
+    });
 
     let md = if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
         let md_client = MangaDexClient::default();
@@ -215,6 +229,21 @@ async fn main() -> Result<(), anyhow::Error> {
                 client_secret,
             })
             .await?;
+
+        if let (Ok(username), Ok(password)) = (md_username, md_password) {
+            tracing::info!("logging in to mangadex...");
+            md_client
+                .oauth()
+                .login()
+                .username(Username::parse(username)?)
+                .password(Password::parse(password)?)
+                .send()
+                .await
+                .map_err(|e| {
+                    tracing::warn!("failed to login to mangadex: {:?}", e);
+                    e
+                })?;
+        }
 
         Some(md_client)
     } else {
@@ -242,6 +271,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .setup(|ctx, _ready, framework| {
             let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
                 if let Ok(id) = id.parse::<u64>() {
+                    tracing::info!("watching channel with id {} for mangadex links.", id);
                     Some(ChannelId::new(id))
                 } else {
                     tracing::warn!("invalid channel id found. mangadex links will not be watched.");
@@ -253,12 +283,24 @@ async fn main() -> Result<(), anyhow::Error> {
                 );
                 None
             };
+
+            let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
+                if let Ok(id) = uuid::Uuid::try_parse(&mdlist_id) {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {
                     manga_update_channel_id,
                     db,
                     md,
+                    mdlist_id,
                 })
             })
         })

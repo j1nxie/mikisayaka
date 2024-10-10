@@ -402,8 +402,10 @@ checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -1468,8 +1470,7 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 [[package]]
 name = "mangadex-api"
 version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ebf8955265fdfd37a60bbd8ce2b3e6b3019eefae24039b2df65614a926e665e"
+source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
 dependencies = [
  "derive_builder",
  "futures",
@@ -1488,8 +1489,7 @@ dependencies = [
 [[package]]
 name = "mangadex-api-schema-rust"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1be0ccc0b9086918105da05198946e3c30a8d51cd62928a95372703e0c4e6f6"
+source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
 dependencies = [
  "mangadex-api-types-rust",
  "reqwest 0.12.8",
@@ -1503,8 +1503,7 @@ dependencies = [
 [[package]]
 name = "mangadex-api-types-rust"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "986fe79d334161320ea5b068528295dfb34addf606f9de7ddd589e32306adb2d"
+source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
 dependencies = [
  "anyhow",
  "derive_builder",
@@ -1546,6 +1545,7 @@ name = "mikisayaka"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "dotenvy",
  "mangadex-api",
  "mangadex-api-schema-rust",
