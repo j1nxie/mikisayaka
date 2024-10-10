@@ -267,7 +267,9 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             manga_list_str = manga_list_str
                 + &format!(
                     "{}. [{}](https://mangadex.org/title/{})\n",
-                    idx, title, manga_id,
+                    idx + 1,
+                    title,
+                    manga_id,
                 );
         }
 
