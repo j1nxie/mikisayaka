@@ -1,7 +1,7 @@
 use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
 use mangadex_api_schema_rust::v5::MangaDexErrorResponse;
 use mangadex_api_types_rust::ReferenceExpansionResource;
-use poise::serenity_prelude::{CreateAllowedMentions, CreateEmbed};
+use poise::serenity_prelude::{self, CreateAllowedMentions, CreateEmbed};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
 /// check mangadex client's availability
@@ -39,7 +39,7 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     prefix_command,
     subcommand_required,
     guild_only,
-    subcommands("add", "list")
+    subcommands("add", "list", "sync")
 )]
 pub async fn manga(_: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -282,6 +282,80 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 )),
         )
         .await?;
+    }
+
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command)]
+pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
+    if check_md_client(ctx).await.is_err() {
+        return Ok(());
+    }
+
+    let manga_list = manga::Entity::find().all(&ctx.data().db).await?;
+
+    let mdlist = ctx
+        .data()
+        .md
+        .as_ref()
+        .unwrap()
+        .custom_list()
+        .id(ctx.data().mdlist_id.unwrap())
+        .get()
+        .send()
+        .await?;
+
+    let msg = ctx
+        .send(
+            poise::CreateReply::default()
+                .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .content("fetching the manga list from the database..."),
+        )
+        .await?;
+
+    let mut builder = ctx
+        .data()
+        .md
+        .as_ref()
+        .unwrap()
+        .custom_list()
+        .id(ctx.data().mdlist_id.unwrap())
+        .put();
+
+    for manga in manga_list {
+        builder.add_manga_id(manga.manga_dex_id);
+    }
+
+    match builder
+        .version(mdlist.data.attributes.version)
+        .build()
+        .unwrap()
+        .send()
+        .await
+    {
+        Ok(_) => {
+            msg.edit(
+                ctx,
+                poise::CreateReply::default()
+                    .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .content("successfully updated the mdlist!"),
+            )
+            .await?;
+        }
+
+        Err(e) => {
+            tracing::warn!("failed to update the mdlist: {}", e);
+            msg.edit(
+                ctx,
+                poise::CreateReply::default()
+                    .reply(true)
+                    .content("failed to update the mdlist. check back later!"),
+            )
+            .await?;
+        }
     }
 
     Ok(())
