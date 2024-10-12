@@ -1,4 +1,5 @@
 use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
+use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateAllowedMentions, CreateEmbed};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
@@ -232,8 +233,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
         let mut manga_list_str = String::new();
 
-        for (idx, manga) in manga_list.iter().enumerate() {
-            let manga_id = manga.manga_dex_id;
+        for (idx, db_manga) in manga_list.iter().enumerate() {
+            let manga_id = db_manga.manga_dex_id;
 
             let manga = ctx
                 .data()
@@ -241,8 +242,25 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 .as_ref()
                 .unwrap()
                 .manga()
-                .id(manga.manga_dex_id)
+                .id(db_manga.manga_dex_id)
                 .get()
+                .send()
+                .await?;
+
+            let chapter_feed = ctx
+                .data()
+                .md
+                .as_ref()
+                .unwrap()
+                .manga()
+                .id(db_manga.manga_dex_id)
+                .feed()
+                .get()
+                .add_translated_language(&mangadex_api_types_rust::Language::English)
+                .order(MangaFeedSortOrder::Chapter(
+                    mangadex_api_types_rust::OrderDirection::Descending,
+                ))
+                .limit(1u32)
                 .send()
                 .await?;
 
@@ -264,13 +282,32 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                     .unwrap()
             };
 
-            manga_list_str = manga_list_str
-                + &format!(
+            let entry_str = if !chapter_feed.data.is_empty() {
+                format!(
+                    "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
+                    idx + 1,
+                    title,
+                    manga_id,
+                    chapter_feed
+                        .data
+                        .first()
+                        .unwrap()
+                        .attributes
+                        .publish_at
+                        .unwrap()
+                        .as_ref()
+                        .unix_timestamp()
+                )
+            } else {
+                format!(
                     "{}. [{}](https://mangadex.org/title/{})\n",
                     idx + 1,
                     title,
                     manga_id,
-                );
+                )
+            };
+
+            manga_list_str = manga_list_str + &entry_str;
         }
 
         ctx.send(
