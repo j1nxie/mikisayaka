@@ -344,9 +344,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
             task.for_each(|_| async {}).await;
         });
-        let _ = tracker_handle.await;
+        tracker_handle.await?;
     }
-    let _ = bot_handle.await;
+    bot_handle.await?;
 
     Ok(())
 }
