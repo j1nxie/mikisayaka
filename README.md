@@ -12,7 +12,7 @@ a small Discord bot meant for housekeeping tasks in Rylie's Nazunacord!
 ## todo
 
 - [x] ~~add / remove manga for tracking new chapter updates~~
-- [x] actually tracking new chapter updates
+- [x] ~~actually tracking new chapter updates~~
 
 ## usage
 
