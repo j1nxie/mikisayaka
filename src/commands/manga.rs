@@ -209,6 +209,15 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
+    let msg = ctx
+        .send(
+            poise::CreateReply::default()
+                .reply(true)
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .content("loading... please watch warmly..."),
+        )
+        .await?;
+
     let list = manga::Entity::find()
         .paginate(&ctx.data().db, 10)
         .fetch_and_next()
@@ -220,7 +229,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
     if let Some(manga_list) = list {
         if manga_list.is_empty() {
-            ctx.send(
+            msg.edit(
+                ctx,
                 poise::CreateReply::default()
                     .reply(true)
                     .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
@@ -310,10 +320,12 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             manga_list_str = manga_list_str + &entry_str;
         }
 
-        ctx.send(
+        msg.edit(
+            ctx,
             poise::CreateReply::default()
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .content("here's your manga list!")
                 .embed(
                     CreateEmbed::default()
                         .title("list of tracked manga titles")
