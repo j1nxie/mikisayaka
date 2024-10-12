@@ -153,9 +153,11 @@ pub async fn add(
         return Ok(());
     }
 
+    let now = time::OffsetDateTime::now_utc();
+
     let model = manga::ActiveModel {
         manga_dex_id: Set(uuid),
-        last_updated: Set(chrono::Utc::now().naive_utc()),
+        last_updated: Set(time::PrimitiveDateTime::new(now.date(), now.time())),
         ..Default::default()
     };
 

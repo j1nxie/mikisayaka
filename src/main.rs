@@ -1,4 +1,5 @@
 use constants::MD_URL_REGEX;
+use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
 use migrator::Migrator;
@@ -11,6 +12,7 @@ use sea_orm_migration::MigratorTrait;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
+#[derive(Clone)]
 struct Data {
     manga_update_channel_id: Option<ChannelId>,
     db: DatabaseConnection,
@@ -21,6 +23,7 @@ struct Data {
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
+mod chapter_tracker;
 mod commands;
 mod constants;
 mod migrator;
@@ -250,6 +253,38 @@ async fn main() -> Result<(), anyhow::Error> {
         None
     };
 
+    let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
+        if let Ok(id) = id.parse::<u64>() {
+            tracing::info!("watching channel with id {} for mangadex links.", id);
+            Some(ChannelId::new(id))
+        } else {
+            tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+            None
+        }
+    } else {
+        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
+        None
+    };
+
+    let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
+        if let Ok(id) = uuid::Uuid::try_parse(&mdlist_id) {
+            Some(id)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let data = Data {
+        manga_update_channel_id,
+        db,
+        md,
+        mdlist_id,
+    };
+
+    let data_clone = data.clone();
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
@@ -269,44 +304,18 @@ async fn main() -> Result<(), anyhow::Error> {
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
-            let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
-                if let Ok(id) = id.parse::<u64>() {
-                    tracing::info!("watching channel with id {} for mangadex links.", id);
-                    Some(ChannelId::new(id))
-                } else {
-                    tracing::warn!("invalid channel id found. mangadex links will not be watched.");
-                    None
-                }
-            } else {
-                tracing::warn!(
-                    "no manga update channel id found. mangadex links will not be watched."
-                );
-                None
-            };
-
-            let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
-                if let Ok(id) = uuid::Uuid::try_parse(&mdlist_id) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {
-                    manga_update_channel_id,
-                    db,
-                    md,
-                    mdlist_id,
-                })
+                Ok(data)
             })
         })
         .build();
 
-    let client = serenity::ClientBuilder::new(token, intents)
+    let webhook_url = std::env::var("DISCORD_WEBHOOK_URL").map_err(|_| {
+        tracing::warn!("missing discord webhook url. tracker will not be initialized.");
+    });
+
+    let client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
         .activity(serenity::ActivityData {
             name: "squartatrice - 美樹 さやか vs. 美樹 さやか (fw. 美樹 さやか)".into(),
@@ -317,7 +326,27 @@ async fn main() -> Result<(), anyhow::Error> {
         .await;
 
     tracing::info!("finished initializing!");
-    client.unwrap().start().await.unwrap();
+    let bot_handle = tokio::spawn(async move { client.unwrap().start().await.unwrap() });
+
+    if data_clone.md.is_some() && webhook_url.is_ok() {
+        tracing::info!("initialized chapter tracker!");
+        let http = serenity::Http::new(&token);
+        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap()).await?;
+
+        let tracker_handle = tokio::spawn(async move {
+            let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
+            let task = futures::stream::unfold(interval, |mut interval| async {
+                interval.tick().await;
+                let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
+
+                Some(((), interval))
+            });
+
+            task.for_each(|_| async {}).await;
+        });
+        let _ = tracker_handle.await;
+    }
+    let _ = bot_handle.await;
 
     Ok(())
 }

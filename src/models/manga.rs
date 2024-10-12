@@ -6,7 +6,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub manga_dex_id: Uuid,
-    pub last_updated: DateTime,
+    pub last_updated: TimeDateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
