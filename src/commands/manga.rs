@@ -349,6 +349,15 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
+    ctx.data()
+        .md
+        .as_ref()
+        .unwrap()
+        .oauth()
+        .refresh()
+        .send()
+        .await?;
+
     let manga_list = manga::Entity::find().all(&ctx.data().db).await?;
 
     let mdlist = ctx
