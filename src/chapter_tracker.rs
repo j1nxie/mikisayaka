@@ -76,6 +76,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
             let embed = CreateEmbed::default()
                 .title(title)
+                .url(format!("https://mangadex.org/chapter/{}", chapter.id))
                 .description(vol_chap_str);
 
             chapter_list.push(embed);
