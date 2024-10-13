@@ -195,7 +195,7 @@ pub async fn add(
         poise::CreateReply::default()
             .reply(true)
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-            .content(resp_string + &format!("added title **[{}](https://mangadex.org/title/{})** to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid)),
+            .content(resp_string + &format!("added title [**{}**](https://mangadex.org/title/{}) to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid)),
     )
     .await?;
 
