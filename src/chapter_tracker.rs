@@ -71,7 +71,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             };
 
             if let Some(chapter_title) = &chapter_data.title {
-                vol_chap_str = vol_chap_str + &format!("- {}", chapter_title);
+                vol_chap_str = vol_chap_str + &format!(" - {}", chapter_title);
             }
 
             let embed = CreateEmbed::default()
