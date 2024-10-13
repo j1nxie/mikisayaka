@@ -1,7 +1,7 @@
 use poise::serenity_prelude::{CreateEmbed, ExecuteWebhook, Http, Webhook};
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
-use crate::{models::manga, Data, Error};
+use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
 pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Result<(), Error> {
     let manga_list = manga::Entity::find().all(&data.db).await?;
@@ -48,6 +48,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .publish_at_since(mangadex_api_types_rust::MangaDexDateTime::new(
                 &db_manga.last_updated.assume_utc(),
             ))
+            .excluded_groups(MD_BLOCKED_LIST.clone())
             .limit(1u32)
             .send()
             .await?;
