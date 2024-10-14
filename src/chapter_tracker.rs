@@ -1,5 +1,6 @@
+use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateEmbed, ExecuteWebhook, Http, Webhook};
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
+use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, EntityTrait, IntoActiveModel, Set};
 
 use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
@@ -19,6 +20,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .send()
             .await?;
 
+        let manga_id = manga.data.id;
         let manga = manga.data.attributes;
 
         let title =
@@ -48,10 +50,16 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .publish_at_since(mangadex_api_types_rust::MangaDexDateTime::new(
                 &db_manga.last_updated.assume_utc(),
             ))
+            .order(MangaFeedSortOrder::Chapter(
+                mangadex_api_types_rust::OrderDirection::Descending,
+            ))
             .excluded_groups(MD_BLOCKED_LIST.clone())
             .limit(1u32)
             .send()
             .await?;
+
+        let mut db_manga_insert = db_manga.into_active_model();
+        let now = time::OffsetDateTime::now_utc();
 
         if chapter_feed.result == mangadex_api_types_rust::ResultType::Ok
             && !chapter_feed.data.is_empty()
@@ -80,17 +88,22 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
                 .description(vol_chap_str)
                 .thumbnail(format!(
                     "https://og.mangadex.org/og-image/manga/{}",
-                    db_manga.manga_dex_id,
+                    manga_id
                 ));
+
+            if let Some(timestamp) = chapter_data.publish_at {
+                db_manga_insert.last_chapter_date = Set(Some(time::PrimitiveDateTime::new(
+                    timestamp.as_ref().date(),
+                    timestamp.as_ref().time(),
+                )));
+            }
 
             chapter_list.push(embed);
         }
 
-        let mut db_manga = db_manga.into_active_model();
-        let now = time::OffsetDateTime::now_utc();
-        db_manga.last_updated = Set(time::PrimitiveDateTime::new(now.date(), now.time()));
+        db_manga_insert.last_updated = Set(time::PrimitiveDateTime::new(now.date(), now.time()));
 
-        db_manga.update(&data.db).await?;
+        db_manga_insert.update(&data.db).await?;
     }
 
     if chapter_list.is_empty() {

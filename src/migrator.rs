@@ -3,6 +3,7 @@ use sea_orm_migration::prelude::*;
 
 mod m_20240810_000001_initial_setup;
 mod m_20241009_000002_mangadex;
+mod m_20241014_000003_manga_last_updated;
 
 pub struct Migrator;
 
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m_20240810_000001_initial_setup::Migration),
             Box::new(m_20241009_000002_mangadex::Migration),
+            Box::new(m_20241014_000003_manga_last_updated::Migration),
         ]
     }
 }
@@ -31,4 +33,5 @@ pub enum Manga {
     Id,
     MangaDexId,
     LastUpdated,
+    LastChapterDate,
 }

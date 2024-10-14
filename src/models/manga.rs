@@ -7,6 +7,7 @@ pub struct Model {
     pub id: i32,
     pub manga_dex_id: Uuid,
     pub last_updated: TimeDateTime,
+    pub last_chapter_date: Option<TimeDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
