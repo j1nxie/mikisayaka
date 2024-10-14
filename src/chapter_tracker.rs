@@ -97,6 +97,20 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
         return Ok(());
     }
 
+    if chapter_list.len() > 10 {
+        let chunks = chapter_list.chunks(10);
+
+        for chunk in chunks {
+            let builder = ExecuteWebhook::new()
+                .content("New chapters are out!")
+                .embeds(chunk.to_vec());
+
+            webhook.execute(http, false, builder).await?;
+        }
+
+        return Ok(());
+    }
+
     let builder = ExecuteWebhook::new()
         .content("New chapters are out!")
         .embeds(chapter_list);
