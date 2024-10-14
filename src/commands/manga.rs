@@ -369,12 +369,23 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     .await?;
 
     while let Some(press) = serenity_prelude::collector::ComponentInteractionCollector::new(ctx)
-        .filter(move |press| {
-            press.data.custom_id.starts_with(&ctx_id.to_string()) && press.user.id == author_id
-        })
+        .filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
         .timeout(std::time::Duration::from_secs(60))
         .await
     {
+        if press.user.id != author_id {
+            press
+                .create_response(
+                    ctx,
+                    serenity_prelude::CreateInteractionResponse::Message(
+                        serenity_prelude::CreateInteractionResponseMessage::new()
+                            .content("you cannot interact with another user's invoked command!")
+                            .ephemeral(true),
+                    ),
+                )
+                .await?;
+        }
+
         if press.data.custom_id == prev_id {
             current_page = current_page.saturating_sub(1);
         } else if press.data.custom_id == next_id {
