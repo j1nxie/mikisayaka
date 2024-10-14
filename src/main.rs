@@ -1,4 +1,4 @@
-use constants::MD_URL_REGEX;
+use constants::{MD_URL_REGEX, STARTUP_TIME};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
@@ -187,6 +187,7 @@ async fn event_handler(
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let _ = dotenvy::dotenv();
+    let _ = &*STARTUP_TIME;
 
     tracing_subscriber::fmt()
         .with_env_filter(
