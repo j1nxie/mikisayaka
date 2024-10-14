@@ -335,6 +335,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     }
 
     let ctx_id = ctx.id();
+    let author_id = ctx.author().id;
     let prev_id = format!("{}prev", ctx_id);
     let next_id = format!("{}next", ctx_id);
 
@@ -363,7 +364,9 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     .await?;
 
     while let Some(press) = serenity_prelude::collector::ComponentInteractionCollector::new(ctx)
-        .filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
+        .filter(move |press| {
+            press.data.custom_id.starts_with(&ctx_id.to_string()) && press.user.id == author_id
+        })
         .timeout(std::time::Duration::from_secs(60))
         .await
     {
