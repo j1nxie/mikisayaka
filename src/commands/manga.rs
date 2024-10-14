@@ -6,7 +6,7 @@ use crate::{
     Context, Error,
 };
 use mangadex_api_types_rust::MangaFeedSortOrder;
-use poise::serenity_prelude::{self, CreateAllowedMentions, CreateEmbed};
+use poise::serenity_prelude::{self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
 };
@@ -352,7 +352,12 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                         "https://mangadex.org/list/{}",
                         ctx.data().mdlist_id.unwrap()
                     ))
-                    .description(pages[0].clone()),
+                    .description(pages[0].clone())
+                    .footer(CreateEmbedFooter::new(format!(
+                        "page {}/{}",
+                        current_page + 1,
+                        pages.len(),
+                    ))),
             )
             .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
                 serenity_prelude::CreateButton::new(&prev_id)
@@ -390,7 +395,12 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                                     "https://mangadex.org/list/{}",
                                     ctx.data().mdlist_id.unwrap()
                                 ))
-                                .description(pages[current_page].clone()),
+                                .description(pages[current_page].clone())
+                                .footer(CreateEmbedFooter::new(format!(
+                                    "page {}/{}",
+                                    current_page + 1,
+                                    pages.len(),
+                                ))),
                         )
                         .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
                             serenity_prelude::CreateButton::new(&prev_id)
