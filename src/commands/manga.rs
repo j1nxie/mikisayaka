@@ -1,7 +1,15 @@
+use std::cmp::Ordering;
+
 use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateAllowedMentions, CreateEmbed};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
+
+struct InternalManga {
+    title: String,
+    id: uuid::Uuid,
+    last_updated: Option<i64>,
+}
 
 /// check mangadex client's availability.
 async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
@@ -241,9 +249,10 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             return Ok(());
         }
 
+        let mut result_list: Vec<InternalManga> = vec![];
         let mut manga_list_str = String::new();
 
-        for (idx, db_manga) in manga_list.iter().enumerate() {
+        for db_manga in manga_list {
             let manga_id = db_manga.manga_dex_id;
 
             let manga = ctx
@@ -292,28 +301,58 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                     .unwrap()
             };
 
-            let entry_str = if !chapter_feed.data.is_empty() {
+            if !chapter_feed.data.is_empty() {
+                result_list.push(InternalManga {
+                    title: title.to_string(),
+                    id: manga_id,
+                    last_updated: Some(
+                        chapter_feed
+                            .data
+                            .first()
+                            .unwrap()
+                            .attributes
+                            .publish_at
+                            .unwrap()
+                            .as_ref()
+                            .unix_timestamp(),
+                    ),
+                });
+            } else {
+                result_list.push(InternalManga {
+                    title: title.to_string(),
+                    id: manga_id,
+                    last_updated: None,
+                });
+            };
+        }
+
+        result_list.sort_by(|a, b| {
+            if a.last_updated.is_none() {
+                return Ordering::Greater;
+            }
+
+            if b.last_updated.is_none() {
+                return Ordering::Less;
+            }
+
+            b.last_updated.unwrap().cmp(&a.last_updated.unwrap())
+        });
+
+        for (idx, manga) in result_list.iter().enumerate() {
+            let entry_str = if let Some(timestamp) = manga.last_updated {
                 format!(
                     "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
                     idx + 1,
-                    title,
-                    manga_id,
-                    chapter_feed
-                        .data
-                        .first()
-                        .unwrap()
-                        .attributes
-                        .publish_at
-                        .unwrap()
-                        .as_ref()
-                        .unix_timestamp()
+                    manga.title,
+                    manga.id,
+                    timestamp
                 )
             } else {
                 format!(
                     "{}. [{}](https://mangadex.org/title/{})\n",
                     idx + 1,
-                    title,
-                    manga_id,
+                    manga.title,
+                    manga.id,
                 )
             };
 
