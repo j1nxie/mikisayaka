@@ -1,15 +1,10 @@
 use std::cmp::Ordering;
 
-use crate::{
-    constants::{MD_BLOCKED_LIST, MD_URL_REGEX},
-    models::manga,
-    Context, Error,
+use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
+use poise::serenity_prelude::{
+    self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, EditMessage,
 };
-use mangadex_api_types_rust::MangaFeedSortOrder;
-use poise::serenity_prelude::{self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
 struct InternalManga {
     title: String,
@@ -425,6 +420,11 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             )
             .await?;
     }
+
+    msg.into_message()
+        .await?
+        .edit(ctx, EditMessage::default().components(vec![]))
+        .await?;
 
     Ok(())
 }
