@@ -379,6 +379,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                     ),
                 )
                 .await?;
+
+            continue;
         }
 
         if press.data.custom_id == prev_id {
