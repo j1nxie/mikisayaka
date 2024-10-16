@@ -86,7 +86,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
                 .title(title)
                 .url(format!("https://mangadex.org/chapter/{}", chapter.id))
                 .description(vol_chap_str)
-                .thumbnail(format!(
+                .image(format!(
                     "https://og.mangadex.org/og-image/manga/{}",
                     manga_id
                 ));
