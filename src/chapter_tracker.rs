@@ -1,6 +1,6 @@
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateEmbed, ExecuteWebhook, Http, Webhook};
-use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, EntityTrait, IntoActiveModel, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
 use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
