@@ -126,7 +126,13 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
     let builder = ExecuteWebhook::new()
         .content("New chapters are out!")
-        .embeds(chapter_list);
+        .embeds(chapter_list)
+        .avatar_url(
+            http.get_current_user()
+                .await?
+                .avatar_url()
+                .unwrap_or_default(),
+        );
 
     webhook.execute(http, false, builder).await?;
 
