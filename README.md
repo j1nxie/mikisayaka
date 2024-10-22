@@ -9,11 +9,6 @@ a small Discord bot meant for housekeeping tasks in Rylie's Nazunacord!
 - maintain a list of manga for tracking new chapter updates
 - send notifications for new manga chapters
 
-## todo
-
-- [x] ~~add / remove manga for tracking new chapter updates~~
-- [x] ~~actually tracking new chapter updates~~
-
 ## usage
 
 if you stumbled across this repository, chances are this bot might not be for you. there are better solutions out there, i just made one because i wanted to. no support will be given for this project, unless i change my mind in the future.

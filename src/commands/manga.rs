@@ -331,6 +331,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
     let ctx_id = ctx.id();
     let author_id = ctx.author().id;
+    let first_id = format!("{}first", ctx_id);
+    let last_id = format!("{}last", ctx_id);
     let prev_id = format!("{}prev", ctx_id);
     let next_id = format!("{}next", ctx_id);
 
@@ -355,10 +357,14 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                     ))),
             )
             .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
+                serenity_prelude::CreateButton::new(&first_id)
+                    .emoji('⏮')
+                    .disabled(true),
                 serenity_prelude::CreateButton::new(&prev_id)
                     .emoji('◀')
                     .disabled(true),
                 serenity_prelude::CreateButton::new(&next_id).emoji('▶'),
+                serenity_prelude::CreateButton::new(&last_id).emoji('⏭'),
             ])]),
     )
     .await?;
@@ -387,6 +393,10 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             current_page = current_page.saturating_sub(1);
         } else if press.data.custom_id == next_id {
             current_page += 1;
+        } else if press.data.custom_id == first_id {
+            current_page = 0;
+        } else if press.data.custom_id == last_id {
+            current_page = pages.len() - 1;
         } else {
             continue;
         }
@@ -411,11 +421,17 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                                 ))),
                         )
                         .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
+                            serenity_prelude::CreateButton::new(&first_id)
+                                .emoji('⏮')
+                                .disabled(current_page == 0),
                             serenity_prelude::CreateButton::new(&prev_id)
                                 .emoji('◀')
                                 .disabled(current_page == 0),
                             serenity_prelude::CreateButton::new(&next_id)
                                 .emoji('▶')
+                                .disabled(current_page == pages.len() - 1),
+                            serenity_prelude::CreateButton::new(&last_id)
+                                .emoji('⏭')
                                 .disabled(current_page == pages.len() - 1),
                         ])]),
                 ),
