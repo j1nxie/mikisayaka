@@ -1,10 +1,15 @@
 use std::cmp::Ordering;
 
-use crate::{constants::MD_URL_REGEX, models::manga, Context, Error};
+use crate::{
+    constants::{MD_BLOCKED_LIST, MD_URL_REGEX},
+    models::manga,
+    Context, Error,
+};
+use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{
     self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, EditMessage,
 };
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, EntityTrait, QueryFilter, Set};
 
 struct InternalManga {
     title: String,
@@ -126,6 +131,24 @@ pub async fn add(
         .send()
         .await?;
 
+    let chapter_feed = ctx
+        .data()
+        .md
+        .as_ref()
+        .unwrap()
+        .manga()
+        .id(uuid)
+        .feed()
+        .get()
+        .add_translated_language(&mangadex_api_types_rust::Language::English)
+        .order(MangaFeedSortOrder::Chapter(
+            mangadex_api_types_rust::OrderDirection::Descending,
+        ))
+        .excluded_groups(MD_BLOCKED_LIST.clone())
+        .limit(1u32)
+        .send()
+        .await?;
+
     let manga = manga.data.attributes;
 
     let title = if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English)
@@ -163,10 +186,30 @@ pub async fn add(
         return Ok(());
     }
 
+    let latest_chapter_date = if chapter_feed.result == mangadex_api_types_rust::ResultType::Ok
+        && !chapter_feed.data.is_empty()
+    {
+        let chapter = chapter_feed.data.first().unwrap();
+
+        let chapter_data = &chapter.attributes;
+
+        if let Some(timestamp) = chapter_data.publish_at {
+            Set(Some(time::PrimitiveDateTime::new(
+                timestamp.as_ref().date(),
+                timestamp.as_ref().time(),
+            )))
+        } else {
+            NotSet
+        }
+    } else {
+        NotSet
+    };
+
     let now = time::OffsetDateTime::now_utc();
 
     let model = manga::ActiveModel {
         manga_dex_id: Set(uuid),
+        last_chapter_date: latest_chapter_date,
         last_updated: Set(time::PrimitiveDateTime::new(now.date(), now.time())),
         ..Default::default()
     };
