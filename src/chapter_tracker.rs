@@ -68,37 +68,42 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
             let chapter_data = &chapter.attributes;
 
-            let mut vol_chap_str = if let Some(vol) = &chapter_data.volume {
-                format!(
-                    "Vol. {}, Ch. {}",
-                    vol,
-                    chapter_data.chapter.as_ref().unwrap()
-                )
-            } else {
-                format!("Ch. {}", chapter_data.chapter.as_ref().unwrap())
+            match &chapter_data.chapter {
+                Some(chap) => {
+                    let mut vol_chap_str = if let Some(vol) = &chapter_data.volume {
+                        format!("Vol. {}, Ch. {}", vol, chap)
+                    } else {
+                        format!("Ch. {}", chap)
+                    };
+
+                    if let Some(chapter_title) = &chapter_data.title {
+                        vol_chap_str = vol_chap_str + &format!(" - {}", chapter_title);
+                    }
+
+                    let embed = CreateEmbed::default()
+                        .title(title)
+                        .url(format!("https://mangadex.org/chapter/{}", chapter.id))
+                        .description(vol_chap_str)
+                        .image(format!(
+                            "https://og.mangadex.org/og-image/manga/{}",
+                            manga_id
+                        ));
+
+                    if let Some(timestamp) = chapter_data.publish_at {
+                        db_manga_insert.last_chapter_date =
+                            Set(Some(time::PrimitiveDateTime::new(
+                                timestamp.as_ref().date(),
+                                timestamp.as_ref().time(),
+                            )));
+                    }
+
+                    chapter_list.push(embed);
+                }
+
+                None => {
+                    continue;
+                }
             };
-
-            if let Some(chapter_title) = &chapter_data.title {
-                vol_chap_str = vol_chap_str + &format!(" - {}", chapter_title);
-            }
-
-            let embed = CreateEmbed::default()
-                .title(title)
-                .url(format!("https://mangadex.org/chapter/{}", chapter.id))
-                .description(vol_chap_str)
-                .image(format!(
-                    "https://og.mangadex.org/og-image/manga/{}",
-                    manga_id
-                ));
-
-            if let Some(timestamp) = chapter_data.publish_at {
-                db_manga_insert.last_chapter_date = Set(Some(time::PrimitiveDateTime::new(
-                    timestamp.as_ref().date(),
-                    timestamp.as_ref().time(),
-                )));
-            }
-
-            chapter_list.push(embed);
         }
 
         db_manga_insert.last_updated = Set(time::PrimitiveDateTime::new(now.date(), now.time()));
