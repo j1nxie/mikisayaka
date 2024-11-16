@@ -1,5 +1,5 @@
 FROM rust:1.81.0-slim-bookworm AS build
-RUN apt update && apt install -y build-essential pkg-config libssl-dev
+RUN apt update && apt install -y build-essential pkg-config libssl-dev git
 
 WORKDIR /app
 COPY .git .git
