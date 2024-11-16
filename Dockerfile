@@ -13,7 +13,7 @@ COPY src src
 RUN touch src/main.rs
 RUN cargo build --release
 
-FROM debian:bookworm-slim AS run
+FROM rust:1.81.0-slim-bookworm AS run
 RUN apt update && apt install -y libssl3 ca-certificates
 WORKDIR /app
 COPY --from=build /app/target/release/mikisayaka .
