@@ -2,6 +2,7 @@ FROM rust:1.81.0-slim-bookworm AS build
 RUN apt update && apt install -y build-essential pkg-config libssl-dev
 
 WORKDIR /app
+COPY .git .git
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
 COPY build.rs build.rs
