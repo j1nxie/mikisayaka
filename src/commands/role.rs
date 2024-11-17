@@ -17,12 +17,14 @@ use crate::{models::roles, Context, Error};
     guild_only,
     subcommands("add", "remove")
 )]
+#[tracing::instrument(skip_all)]
 pub async fn role(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 /// add a self-assignable role from list.
 #[poise::command(slash_command, prefix_command)]
+#[tracing::instrument(skip_all)]
 pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
     let mut db_roles_find = roles::Entity::find().paginate(&ctx.data().db, 10);
 
@@ -127,6 +129,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
 
 /// remove a self-assignable role from your role list.
 #[poise::command(slash_command, prefix_command)]
+#[tracing::instrument(skip_all, fields(input = %input))]
 pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
     let mut db_roles_find = roles::Entity::find().paginate(&ctx.data().db, 10);
 

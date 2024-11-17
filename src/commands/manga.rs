@@ -56,12 +56,14 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     guild_only,
     subcommands("add", "list", "sync")
 )]
+#[tracing::instrument(skip_all)]
 pub async fn manga(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 /// add a manga to the tracking list.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all, fields(input = %input))]
 pub async fn add(
     ctx: Context<'_>,
     #[description = "mangadex uuid or link of the manga you want to add."] input: String,
@@ -292,6 +294,7 @@ pub async fn add(
 
 /// print the currently tracked list.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
         return Ok(());
@@ -544,6 +547,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
 /// sync the local database to the mdlist.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all)]
 pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
         return Ok(());

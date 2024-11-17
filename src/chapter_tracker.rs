@@ -4,6 +4,7 @@ use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
 use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
+#[tracing::instrument(skip_all)]
 pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Result<(), Error> {
     let manga_list = manga::Entity::find().all(&data.db).await?;
 

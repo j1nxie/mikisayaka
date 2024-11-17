@@ -29,6 +29,7 @@ mod constants;
 mod migrator;
 mod models;
 
+#[tracing::instrument(skip_all)]
 async fn event_handler(
     ctx: &serenity::Context,
     event: &serenity::FullEvent,
@@ -325,7 +326,7 @@ async fn main() -> anyhow::Result<()> {
                     .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when registering commands"))?;
 
                 Ok(data)
-            })
+            }.in_current_span())
         })
         .build();
 
