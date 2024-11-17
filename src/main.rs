@@ -63,7 +63,10 @@ async fn event_handler(
                         .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                         .content("got a mangadex link! fetching data..."),
                 )
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
             // FIXME: better error handling here
             // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
@@ -75,7 +78,10 @@ async fn event_handler(
                 .id(uuid)
                 .get()
                 .send()
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+                )?;
 
             let manga_id = manga.data.id;
             let manga = manga.data.attributes;
@@ -178,14 +184,15 @@ async fn event_handler(
                             .field("tags", tags, false),
                     ),
             )
-            .await?;
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
         }
     }
     Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
     let _ = &*STARTUP_TIME;
 
@@ -306,7 +313,10 @@ async fn main() -> Result<(), anyhow::Error> {
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                poise::builtins::register_globally(ctx, &framework.options().commands)
+                    .await
+                    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when registering commands"))?;
+
                 Ok(data)
             })
         })
@@ -332,7 +342,11 @@ async fn main() -> Result<(), anyhow::Error> {
     if data_clone.md.is_some() && webhook_url.is_ok() {
         tracing::info!("initialized chapter tracker!");
         let http = serenity::Http::new(&token);
-        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap()).await?;
+        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap())
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when creating webhook"),
+            )?;
 
         let tracker_handle = tokio::spawn(async move {
             let interval = tokio::time::interval(std::time::Duration::from_secs(7200));

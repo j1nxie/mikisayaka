@@ -21,7 +21,8 @@ pub async fn squartatrice(ctx: Context<'_>) -> Result<(), Error> {
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
             .content(content),
     )
-    .await?;
+    .await
+    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
     Ok(())
 }
