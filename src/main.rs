@@ -7,7 +7,7 @@ use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
     MessageReference,
 };
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
 use tracing::{level_filters::LevelFilter, Instrument};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -212,7 +212,10 @@ async fn main() -> anyhow::Result<()> {
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     tracing::info!("initializing database connection...");
-    let db = Database::connect(db_url).await?;
+    let db_opts = ConnectOptions::new(db_url)
+        .sqlx_logging_level(tracing::log::LevelFilter::Debug)
+        .to_owned();
+    let db = Database::connect(db_opts).await?;
     Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
