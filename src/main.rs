@@ -261,17 +261,21 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
-        if let Ok(id) = id.parse::<u64>() {
-            tracing::info!("watching channel with id {} for mangadex links.", id);
-            Some(ChannelId::new(id))
-        } else {
-            tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+    let manga_update_channel_id = match std::env::var("MANGA_UPDATE_CHANNEL_ID") {
+        Ok(id) => match id.parse::<u64>() {
+            Ok(id) => {
+                tracing::info!("watching channel with id {} for mangadex links.", id);
+                Some(ChannelId::new(id))
+            }
+            _ => {
+                tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+                None
+            }
+        },
+        _ => {
+            tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
             None
         }
-    } else {
-        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
-        None
     };
 
     let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
