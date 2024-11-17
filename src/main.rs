@@ -235,33 +235,34 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("missing mangadex password. mdlist commands will not be initialized.");
     });
 
-    let md = if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
-        let md_client = MangaDexClient::default();
+    let md = match (md_client_id, md_client_secret) {
+        (Ok(client_id), Ok(client_secret)) => {
+            let md_client = MangaDexClient::default();
 
-        md_client
-            .set_client_info(&ClientInfo {
-                client_id,
-                client_secret,
-            })
-            .await?;
-
-        if let (Ok(username), Ok(password)) = (md_username, md_password) {
-            tracing::info!("logging in to mangadex...");
             md_client
-                .oauth()
-                .login()
-                .username(Username::parse(username)?)
-                .password(Password::parse(password)?)
-                .send()
-                .await
-                .inspect_err(
-                    |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
-                )?;
-        }
+                .set_client_info(&ClientInfo {
+                    client_id,
+                    client_secret,
+                })
+                .await?;
 
-        Some(md_client)
-    } else {
-        None
+            if let (Ok(username), Ok(password)) = (md_username, md_password) {
+                tracing::info!("logging in to mangadex...");
+                md_client
+                    .oauth()
+                    .login()
+                    .username(Username::parse(username)?)
+                    .password(Password::parse(password)?)
+                    .send()
+                    .await
+                    .inspect_err(
+                        |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
+                    )?;
+            }
+
+            Some(md_client)
+        }
+        _ => None,
     };
 
     let manga_update_channel_id = match std::env::var("MANGA_UPDATE_CHANNEL_ID") {
@@ -281,14 +282,12 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
-        if let Ok(id) = uuid::Uuid::try_parse(&mdlist_id) {
-            Some(id)
-        } else {
-            None
-        }
-    } else {
-        None
+    let mdlist_id = match md_mdlist_id {
+        Ok(mdlist_id) => match uuid::Uuid::try_parse(&mdlist_id) {
+            Ok(id) => Some(id),
+            _ => None,
+        },
+        _ => None,
     };
 
     let data = Data {
