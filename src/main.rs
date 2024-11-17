@@ -126,7 +126,10 @@ async fn event_handler(
                 .id(uuid)
                 .get()
                 .send()
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+                )?;
 
             let statistics = statistics.statistics.get(&uuid).unwrap();
 
