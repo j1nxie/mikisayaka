@@ -23,20 +23,21 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
         let manga_id = manga.data.id;
         let manga = manga.data.attributes;
 
-        let title =
-            if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English) {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
+        let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+            Some(en_title) => en_title,
+            None => {
+                match manga
                     .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
-            };
+                    .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                {
+                    Some(jp_ro) => jp_ro,
+                    None => manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap(),
+                }
+            }
+        };
 
         let chapter_feed = data
             .md
@@ -70,10 +71,9 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
             match &chapter_data.chapter {
                 Some(chap) => {
-                    let mut vol_chap_str = if let Some(vol) = &chapter_data.volume {
-                        format!("Vol. {}, Ch. {}", vol, chap)
-                    } else {
-                        format!("Ch. {}", chap)
+                    let mut vol_chap_str = match &chapter_data.volume {
+                        Some(vol) => format!("Vol. {}, Ch. {}", vol, chap),
+                        None => format!("Ch. {}", chap),
                     };
 
                     if let Some(chapter_title) = &chapter_data.title {
