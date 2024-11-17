@@ -80,36 +80,47 @@ pub async fn add(
         .await
         .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when refreshing token"))?;
 
-    let uuid = if let Some(captures) = MD_URL_REGEX.captures(&input) {
-        if let Ok(u) = uuid::Uuid::try_parse(&captures[1]) {
-            tracing::info!("got uuid from link: {}", u);
-            u
-        } else {
-            ctx.send(
-                poise::CreateReply::default()
-                    .reply(true)
-                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                    .content("invalid uuid supplied."),
-            )
-            .await
-            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+    let uuid = match MD_URL_REGEX.captures(&input) {
+        Some(captures) => match uuid::Uuid::try_parse(&captures[1]) {
+            Ok(u) => {
+                tracing::info!(uuid = %u, "got uuid from link");
+                u
+            }
+            _ => {
+                ctx.send(
+                    poise::CreateReply::default()
+                        .reply(true)
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("invalid uuid supplied."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
-            return Ok(());
-        }
-    } else if let Ok(u) = uuid::Uuid::try_parse(&input) {
-        tracing::info!("got uuid from input string: {}", u);
-        u
-    } else {
-        ctx.send(
-            poise::CreateReply::default()
-                .reply(true)
-                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .content("invalid link supplied."),
-        )
-        .await
-        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+                return Ok(());
+            }
+        },
+        None => match uuid::Uuid::try_parse(&input) {
+            Ok(u) => {
+                tracing::info!(uuid = %u, "got uuid from input string");
+                u
+            }
+            _ => {
+                ctx.send(
+                    poise::CreateReply::default()
+                        .reply(true)
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("invalid link supplied."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
-        return Ok(());
+                return Ok(());
+            }
+        },
     };
 
     let manga_list = manga::Entity::find()
@@ -168,20 +179,23 @@ pub async fn add(
 
     let manga = manga.data.attributes;
 
-    let title = if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English)
-    {
-        en_title
-    } else if let Some(jp_ro) = manga
-        .title
-        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-    {
-        jp_ro
-    } else {
-        // FIXME: don't unwrap here - this will literally kill the main thread
-        manga
-            .title
-            .get(&mangadex_api_types_rust::Language::Japanese)
-            .unwrap()
+    let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+        Some(en_title) => en_title,
+        None => {
+            match manga
+                .title
+                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+            {
+                Some(jp_ro) => jp_ro,
+                None => {
+                    // FIXME: don't unwrap here - this will literally kill the main thread
+                    manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap()
+                }
+            }
+        }
     };
 
     if manga::Entity::find()
@@ -213,13 +227,12 @@ pub async fn add(
 
         let chapter_data = &chapter.attributes;
 
-        if let Some(timestamp) = chapter_data.publish_at {
-            Set(Some(time::PrimitiveDateTime::new(
+        match chapter_data.publish_at {
+            Some(timestamp) => Set(Some(time::PrimitiveDateTime::new(
                 timestamp.as_ref().date(),
                 timestamp.as_ref().time(),
-            )))
-        } else {
-            NotSet
+            ))),
+            _ => NotSet,
         }
     } else {
         NotSet
@@ -336,20 +349,21 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
         let manga = manga.data.attributes;
 
-        let title =
-            if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English) {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
+        let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+            Some(en_title) => en_title,
+            None => {
+                match manga
                     .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
-            };
+                    .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                {
+                    Some(jp_ro) => jp_ro,
+                    None => manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap(),
+                }
+            }
+        };
 
         result_list.push(InternalManga {
             title: title.to_string(),
@@ -376,21 +390,24 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     for (page, chunk) in result_list.chunks(10).enumerate() {
         let mut manga_list_str = String::new();
         for (idx, manga) in chunk.iter().enumerate() {
-            let entry_str = if let Some(timestamp) = manga.last_updated {
-                format!(
-                    "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
-                    idx + 1 + page * 10,
-                    manga.title,
-                    manga.id,
-                    timestamp.assume_utc().unix_timestamp(),
-                )
-            } else {
-                format!(
-                    "{}. [{}](https://mangadex.org/title/{})\n",
-                    idx + 1 + page * 10,
-                    manga.title,
-                    manga.id,
-                )
+            let entry_str = match manga.last_updated {
+                Some(timestamp) => {
+                    format!(
+                        "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
+                        idx + 1 + page * 10,
+                        manga.title,
+                        manga.id,
+                        timestamp.assume_utc().unix_timestamp(),
+                    )
+                }
+                _ => {
+                    format!(
+                        "{}. [{}](https://mangadex.org/title/{})\n",
+                        idx + 1 + page * 10,
+                        manga.title,
+                        manga.id,
+                    )
+                }
             };
 
             manga_list_str = manga_list_str + &entry_str;

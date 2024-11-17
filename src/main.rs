@@ -88,18 +88,20 @@ async fn event_handler(
 
             let en_title = manga.title.get(&mangadex_api_types_rust::Language::English);
 
-            let title = if let Some(en_title) = en_title {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
-                    .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
+            let title = match en_title {
+                Some(en_title) => en_title,
+                None => {
+                    match manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                    {
+                        Some(jp_ro) => jp_ro,
+                        None => manga
+                            .title
+                            .get(&mangadex_api_types_rust::Language::Japanese)
+                            .unwrap(),
+                    }
+                }
             };
 
             let tags = manga
@@ -146,38 +148,34 @@ async fn event_handler(
                             .field("status", manga.status.to_string(), true)
                             .field(
                                 "year",
-                                if let Some(year) = manga.year {
-                                    year.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.year {
+                                    Some(year) => year.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field(
                                 "demographic",
-                                if let Some(demographic) = manga.publication_demographic {
-                                    demographic.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.publication_demographic {
+                                    Some(demographic) => demographic.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field(
                                 "rating",
-                                if let Some(avg) = statistics.rating.average {
-                                    avg.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match statistics.rating.average {
+                                    Some(avg) => avg.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field("follows", statistics.follows.to_string(), true)
                             .field(
                                 "content rating",
-                                if let Some(content_rating) = manga.content_rating {
-                                    content_rating.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.content_rating {
+                                    Some(content_rating) => content_rating.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
