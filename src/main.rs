@@ -9,8 +9,8 @@ use poise::serenity_prelude::{
 };
 use sea_orm::{Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::EnvFilter;
+use tracing::{level_filters::LevelFilter, Instrument};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Clone)]
 struct Data {
@@ -196,12 +196,13 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
     let _ = &*STARTUP_TIME;
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::builder()
                 .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy(),
         )
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     tracing::info!("initializing... please wait warmly.");
