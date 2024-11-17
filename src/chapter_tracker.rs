@@ -19,7 +19,10 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .id(db_manga.manga_dex_id)
             .get()
             .send()
-            .await?;
+            .await
+            .inspect_err(|e|
+                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching manga"),
+            )?;
 
         let manga_id = manga.data.id;
         let manga = manga.data.attributes;
@@ -58,7 +61,10 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .excluded_groups(MD_BLOCKED_LIST.clone())
             .limit(1u32)
             .send()
-            .await?;
+            .await
+            .inspect_err(|e|
+                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching chapter feed"),
+            )?;
 
         let mut db_manga_insert = db_manga.into_active_model();
         let now = time::OffsetDateTime::now_utc();
