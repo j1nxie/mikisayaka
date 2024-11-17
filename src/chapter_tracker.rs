@@ -4,6 +4,7 @@ use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
 use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
+#[tracing::instrument(skip_all)]
 pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Result<(), Error> {
     let manga_list = manga::Entity::find().all(&data.db).await?;
 
@@ -18,25 +19,29 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .id(db_manga.manga_dex_id)
             .get()
             .send()
-            .await?;
+            .await
+            .inspect_err(|e|
+                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching manga"),
+            )?;
 
         let manga_id = manga.data.id;
         let manga = manga.data.attributes;
 
-        let title =
-            if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English) {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
+        let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+            Some(en_title) => en_title,
+            None => {
+                match manga
                     .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
-            };
+                    .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                {
+                    Some(jp_ro) => jp_ro,
+                    None => manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap(),
+                }
+            }
+        };
 
         let chapter_feed = data
             .md
@@ -56,7 +61,10 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .excluded_groups(MD_BLOCKED_LIST.clone())
             .limit(1u32)
             .send()
-            .await?;
+            .await
+            .inspect_err(|e|
+                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching chapter feed"),
+            )?;
 
         let mut db_manga_insert = db_manga.into_active_model();
         let now = time::OffsetDateTime::now_utc();
@@ -70,10 +78,9 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
             match &chapter_data.chapter {
                 Some(chap) => {
-                    let mut vol_chap_str = if let Some(vol) = &chapter_data.volume {
-                        format!("Vol. {}, Ch. {}", vol, chap)
-                    } else {
-                        format!("Ch. {}", chap)
+                    let mut vol_chap_str = match &chapter_data.volume {
+                        Some(vol) => format!("Vol. {}, Ch. {}", vol, chap),
+                        None => format!("Ch. {}", chap),
                     };
 
                     if let Some(chapter_title) = &chapter_data.title {

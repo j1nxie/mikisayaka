@@ -26,7 +26,8 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("mangadex client is not initialized. this command will not work."),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
         return Err("mangadex client is not initialized.".into());
     }
@@ -38,7 +39,8 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("mdlist uuid is not set. this command will not work."),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
         return Err("mdlist uuid is not set.".into());
     }
@@ -54,12 +56,14 @@ async fn check_md_client(ctx: Context<'_>) -> Result<(), Error> {
     guild_only,
     subcommands("add", "list", "sync")
 )]
+#[tracing::instrument(skip_all)]
 pub async fn manga(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 /// add a manga to the tracking list.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all, fields(input = %input))]
 pub async fn add(
     ctx: Context<'_>,
     #[description = "mangadex uuid or link of the manga you want to add."] input: String,
@@ -75,39 +79,58 @@ pub async fn add(
         .oauth()
         .refresh()
         .send()
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when refreshing token"))?;
 
-    let uuid = if let Some(captures) = MD_URL_REGEX.captures(&input) {
-        if let Ok(u) = uuid::Uuid::try_parse(&captures[1]) {
-            tracing::info!("got uuid from link: {}", u);
-            u
-        } else {
-            ctx.send(
-                poise::CreateReply::default()
-                    .reply(true)
-                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                    .content("invalid uuid supplied."),
-            )
-            .await?;
+    let uuid = match MD_URL_REGEX.captures(&input) {
+        Some(captures) => match uuid::Uuid::try_parse(&captures[1]) {
+            Ok(u) => {
+                tracing::info!(uuid = %u, "got uuid from link");
+                u
+            }
+            _ => {
+                ctx.send(
+                    poise::CreateReply::default()
+                        .reply(true)
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("invalid uuid supplied."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
-            return Ok(());
-        }
-    } else if let Ok(u) = uuid::Uuid::try_parse(&input) {
-        tracing::info!("got uuid from input string: {}", u);
-        u
-    } else {
-        ctx.send(
-            poise::CreateReply::default()
-                .reply(true)
-                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .content("invalid link supplied."),
-        )
-        .await?;
+                return Ok(());
+            }
+        },
+        None => match uuid::Uuid::try_parse(&input) {
+            Ok(u) => {
+                tracing::info!(uuid = %u, "got uuid from input string");
+                u
+            }
+            _ => {
+                ctx.send(
+                    poise::CreateReply::default()
+                        .reply(true)
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("invalid link supplied."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
-        return Ok(());
+                return Ok(());
+            }
+        },
     };
 
-    let manga_list = manga::Entity::find().all(&ctx.data().db).await?;
+    let manga_list = manga::Entity::find()
+        .all(&ctx.data().db)
+        .await
+        .inspect_err(
+            |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
+        )?;
 
     let mdlist = ctx
         .data()
@@ -118,7 +141,8 @@ pub async fn add(
         .id(ctx.data().mdlist_id.unwrap())
         .get()
         .send()
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when fetching mdlist"))?;
 
     let manga = ctx
         .data()
@@ -129,7 +153,10 @@ pub async fn add(
         .id(uuid)
         .get()
         .send()
-        .await?;
+        .await
+        .inspect_err(
+            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+        )?;
 
     let chapter_feed = ctx
         .data()
@@ -147,29 +174,37 @@ pub async fn add(
         .excluded_groups(MD_BLOCKED_LIST.clone())
         .limit(1u32)
         .send()
-        .await?;
+        .await
+        .inspect_err(
+            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching chapter feed"),
+        )?;
 
     let manga = manga.data.attributes;
 
-    let title = if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English)
-    {
-        en_title
-    } else if let Some(jp_ro) = manga
-        .title
-        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-    {
-        jp_ro
-    } else {
-        manga
-            .title
-            .get(&mangadex_api_types_rust::Language::Japanese)
-            .unwrap()
+    let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+        Some(en_title) => en_title,
+        None => {
+            match manga
+                .title
+                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+            {
+                Some(jp_ro) => jp_ro,
+                None => {
+                    // FIXME: don't unwrap here - this will literally kill the main thread
+                    manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap()
+                }
+            }
+        }
     };
 
     if manga::Entity::find()
         .filter(manga::Column::MangaDexId.eq(uuid))
         .one(&ctx.data().db)
-        .await?
+        .await.
+        inspect_err(|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga from database"))?
         .is_some()
     {
         ctx.send(
@@ -181,7 +216,8 @@ pub async fn add(
                     title
                 )),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
         return Ok(());
     }
@@ -193,13 +229,12 @@ pub async fn add(
 
         let chapter_data = &chapter.attributes;
 
-        if let Some(timestamp) = chapter_data.publish_at {
-            Set(Some(time::PrimitiveDateTime::new(
+        match chapter_data.publish_at {
+            Some(timestamp) => Set(Some(time::PrimitiveDateTime::new(
                 timestamp.as_ref().date(),
                 timestamp.as_ref().time(),
-            )))
-        } else {
-            NotSet
+            ))),
+            _ => NotSet,
         }
     } else {
         NotSet
@@ -214,7 +249,9 @@ pub async fn add(
         ..Default::default()
     };
 
-    model.insert(&ctx.data().db).await?;
+    model.insert(&ctx.data().db).await.inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when inserting manga into database"),
+    )?;
 
     let mut builder = ctx
         .data()
@@ -239,7 +276,7 @@ pub async fn add(
         .send()
         .await
         .map_err(|e| {
-            tracing::warn!("an error happened while updating the mdlist: {}", e);
+            tracing::warn!(err = ?e, "an error occurred when updating the mdlist");
             resp_string = "*failed to update the mdlist. it will (hopefully) be updated the next time you add a manga. you can also try running `s>manga sync` to sync the mdlist.*\n\n".to_string()
         });
 
@@ -249,13 +286,15 @@ pub async fn add(
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
             .content(resp_string + &format!("added title [**{}**](https://mangadex.org/title/{}) to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid)),
     )
-    .await?;
+    .await
+    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
     Ok(())
 }
 
 /// print the currently tracked list.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
         return Ok(());
@@ -268,15 +307,15 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("loading... please watch warmly..."),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
     let manga_list = manga::Entity::find()
         .all(&ctx.data().db)
         .await
-        .map_err(|e| {
-            tracing::error!("there was an error fetching from database: {}", e);
-            e
-        })?;
+        .inspect_err(
+            |e| tracing::error!(err = ?e, "there was an error fetching manga list from database"),
+        )?;
 
     if manga_list.is_empty() {
         msg.edit(
@@ -286,7 +325,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("there are no manga in the tracking list."),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
         return Ok(());
     }
@@ -305,24 +345,28 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             .id(db_manga.manga_dex_id)
             .get()
             .send()
-            .await?;
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching manga"),
+            )?;
 
         let manga = manga.data.attributes;
 
-        let title =
-            if let Some(en_title) = manga.title.get(&mangadex_api_types_rust::Language::English) {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
+        let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {
+            Some(en_title) => en_title,
+            None => {
+                match manga
                     .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
-            };
+                    .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                {
+                    Some(jp_ro) => jp_ro,
+                    None => manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::Japanese)
+                        .unwrap(),
+                }
+            }
+        };
 
         result_list.push(InternalManga {
             title: title.to_string(),
@@ -349,21 +393,24 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     for (page, chunk) in result_list.chunks(10).enumerate() {
         let mut manga_list_str = String::new();
         for (idx, manga) in chunk.iter().enumerate() {
-            let entry_str = if let Some(timestamp) = manga.last_updated {
-                format!(
-                    "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
-                    idx + 1 + page * 10,
-                    manga.title,
-                    manga.id,
-                    timestamp.assume_utc().unix_timestamp(),
-                )
-            } else {
-                format!(
-                    "{}. [{}](https://mangadex.org/title/{})\n",
-                    idx + 1 + page * 10,
-                    manga.title,
-                    manga.id,
-                )
+            let entry_str = match manga.last_updated {
+                Some(timestamp) => {
+                    format!(
+                        "{}. [{}](https://mangadex.org/title/{}) (last updated: <t:{}:R>)\n",
+                        idx + 1 + page * 10,
+                        manga.title,
+                        manga.id,
+                        timestamp.assume_utc().unix_timestamp(),
+                    )
+                }
+                _ => {
+                    format!(
+                        "{}. [{}](https://mangadex.org/title/{})\n",
+                        idx + 1 + page * 10,
+                        manga.title,
+                        manga.id,
+                    )
+                }
             };
 
             manga_list_str = manga_list_str + &entry_str;
@@ -410,7 +457,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 serenity_prelude::CreateButton::new(&last_id).emoji('⏭'),
             ])]),
     )
-    .await?;
+    .await
+    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
 
     while let Some(press) = serenity_prelude::collector::ComponentInteractionCollector::new(ctx)
         .filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
@@ -427,7 +475,10 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                             .ephemeral(true),
                     ),
                 )
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when creating response"),
+                )?;
 
             continue;
         }
@@ -479,19 +530,24 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                         ])]),
                 ),
             )
-            .await?;
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when creating response"),
+            )?;
     }
 
     msg.into_message()
         .await?
         .edit(ctx, EditMessage::default().components(vec![]))
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
 
     Ok(())
 }
 
 /// sync the local database to the mdlist.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all)]
 pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
     if check_md_client(ctx).await.is_err() {
         return Ok(());
@@ -504,7 +560,10 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
         .oauth()
         .refresh()
         .send()
-        .await?;
+        .await
+        .inspect_err(
+            |e| tracing::error!(err = ?e, "an error occurred when refreshing mangadex token"),
+        )?;
 
     let msg = ctx
         .send(
@@ -513,9 +572,13 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content("fetching the manga list from the database..."),
         )
-        .await?;
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
-    let manga_list = manga::Entity::find().all(&ctx.data().db).await?;
+    let manga_list = manga::Entity::find()
+        .all(&ctx.data().db)
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when fetching manga list from database"))?;
 
     let mdlist = ctx
         .data()
@@ -556,18 +619,20 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
                     .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                     .content("successfully updated the mdlist!"),
             )
-            .await?;
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
         }
 
         Err(e) => {
-            tracing::warn!("failed to update the mdlist: {}", e);
+            tracing::warn!(err = ?e, "an error occurred when updating mdlist");
             msg.edit(
                 ctx,
                 poise::CreateReply::default()
                     .reply(true)
                     .content("failed to update the mdlist. check back later!"),
             )
-            .await?;
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
         }
     }
 

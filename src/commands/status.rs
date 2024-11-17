@@ -9,6 +9,7 @@ use poise::serenity_prelude as serenity;
 
 /// get the bot's status.
 #[poise::command(prefix_command, slash_command)]
+#[tracing::instrument(skip_all)]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(poise::CreateReply::default().embed(
         serenity::CreateEmbed::new()
@@ -22,7 +23,9 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
         .field("poise", format!("[{0}](https://docs.rs/crate/poise/{0})", POISE_VERSION), true)
         .field("uptime", format!("<t:{}:R>", STARTUP_TIME.duration_since(UNIX_EPOCH).unwrap().as_secs()), true)
         .thumbnail(get_bot_avatar(ctx))
-    )).await?;
+    ))
+    .await
+    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
     Ok(())
 }

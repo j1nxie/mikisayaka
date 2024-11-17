@@ -7,10 +7,10 @@ use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
     MessageReference,
 };
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::EnvFilter;
+use tracing::{level_filters::LevelFilter, Instrument};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 struct Data {
@@ -29,6 +29,7 @@ mod constants;
 mod migrator;
 mod models;
 
+#[tracing::instrument(skip_all)]
 async fn event_handler(
     ctx: &serenity::Context,
     event: &serenity::FullEvent,
@@ -63,7 +64,10 @@ async fn event_handler(
                         .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                         .content("got a mangadex link! fetching data..."),
                 )
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
 
             // FIXME: better error handling here
             // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
@@ -75,25 +79,30 @@ async fn event_handler(
                 .id(uuid)
                 .get()
                 .send()
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+                )?;
 
             let manga_id = manga.data.id;
             let manga = manga.data.attributes;
 
             let en_title = manga.title.get(&mangadex_api_types_rust::Language::English);
 
-            let title = if let Some(en_title) = en_title {
-                en_title
-            } else if let Some(jp_ro) = manga
-                .title
-                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-            {
-                jp_ro
-            } else {
-                manga
-                    .title
-                    .get(&mangadex_api_types_rust::Language::Japanese)
-                    .unwrap()
+            let title = match en_title {
+                Some(en_title) => en_title,
+                None => {
+                    match manga
+                        .title
+                        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                    {
+                        Some(jp_ro) => jp_ro,
+                        None => manga
+                            .title
+                            .get(&mangadex_api_types_rust::Language::Japanese)
+                            .unwrap(),
+                    }
+                }
             };
 
             let tags = manga
@@ -118,7 +127,10 @@ async fn event_handler(
                 .id(uuid)
                 .get()
                 .send()
-                .await?;
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+                )?;
 
             let statistics = statistics.statistics.get(&uuid).unwrap();
 
@@ -140,61 +152,59 @@ async fn event_handler(
                             .field("status", manga.status.to_string(), true)
                             .field(
                                 "year",
-                                if let Some(year) = manga.year {
-                                    year.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.year {
+                                    Some(year) => year.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field(
                                 "demographic",
-                                if let Some(demographic) = manga.publication_demographic {
-                                    demographic.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.publication_demographic {
+                                    Some(demographic) => demographic.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field(
                                 "rating",
-                                if let Some(avg) = statistics.rating.average {
-                                    avg.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match statistics.rating.average {
+                                    Some(avg) => avg.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field("follows", statistics.follows.to_string(), true)
                             .field(
                                 "content rating",
-                                if let Some(content_rating) = manga.content_rating {
-                                    content_rating.to_string()
-                                } else {
-                                    "unknown".to_string()
+                                match manga.content_rating {
+                                    Some(content_rating) => content_rating.to_string(),
+                                    None => "unknown".to_string(),
                                 },
                                 true,
                             )
                             .field("tags", tags, false),
                     ),
             )
-            .await?;
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
         }
     }
     Ok(())
 }
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
     let _ = &*STARTUP_TIME;
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::builder()
                 .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy(),
         )
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     tracing::info!("initializing... please wait warmly.");
@@ -204,77 +214,82 @@ async fn main() -> Result<(), anyhow::Error> {
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     tracing::info!("initializing database connection...");
-    let db = Database::connect(db_url).await?;
+    let db_opts = ConnectOptions::new(db_url)
+        .sqlx_logging_level(tracing::log::LevelFilter::Debug)
+        .to_owned();
+    let db = Database::connect(db_opts).await?;
     Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
-    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").map_err(|_| {
+    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").inspect_err(|_| {
         tracing::warn!("missing mangadex client id. manga commands will not be initialized.");
     });
-    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").map_err(|_| {
+    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").inspect_err(|_| {
         tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
     });
-    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").map_err(|_| {
+    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").inspect_err(|_| {
         tracing::warn!("missing mangadex mdlist id. manga commands will not be initialized.");
     });
-    let md_username = std::env::var("MANGADEX_USERNAME").map_err(|_| {
+    let md_username = std::env::var("MANGADEX_USERNAME").inspect_err(|_| {
         tracing::warn!("missing mangadex username. mdlist commands will not be initialized.");
     });
-    let md_password = std::env::var("MANGADEX_PASSWORD").map_err(|_| {
+    let md_password = std::env::var("MANGADEX_PASSWORD").inspect_err(|_| {
         tracing::warn!("missing mangadex password. mdlist commands will not be initialized.");
     });
 
-    let md = if let (Ok(client_id), Ok(client_secret)) = (md_client_id, md_client_secret) {
-        let md_client = MangaDexClient::default();
+    let md = match (md_client_id, md_client_secret) {
+        (Ok(client_id), Ok(client_secret)) => {
+            let md_client = MangaDexClient::default();
 
-        md_client
-            .set_client_info(&ClientInfo {
-                client_id,
-                client_secret,
-            })
-            .await?;
-
-        if let (Ok(username), Ok(password)) = (md_username, md_password) {
-            tracing::info!("logging in to mangadex...");
             md_client
-                .oauth()
-                .login()
-                .username(Username::parse(username)?)
-                .password(Password::parse(password)?)
-                .send()
-                .await
-                .map_err(|e| {
-                    tracing::warn!("failed to login to mangadex: {:?}", e);
-                    e
-                })?;
-        }
+                .set_client_info(&ClientInfo {
+                    client_id,
+                    client_secret,
+                })
+                .await?;
 
-        Some(md_client)
-    } else {
-        None
+            if let (Ok(username), Ok(password)) = (md_username, md_password) {
+                tracing::info!("logging in to mangadex...");
+                md_client
+                    .oauth()
+                    .login()
+                    .username(Username::parse(username)?)
+                    .password(Password::parse(password)?)
+                    .send()
+                    .await
+                    .inspect_err(
+                        |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
+                    )?;
+            }
+
+            Some(md_client)
+        }
+        _ => None,
     };
 
-    let manga_update_channel_id = if let Ok(id) = std::env::var("MANGA_UPDATE_CHANNEL_ID") {
-        if let Ok(id) = id.parse::<u64>() {
-            tracing::info!("watching channel with id {} for mangadex links.", id);
-            Some(ChannelId::new(id))
-        } else {
-            tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+    let manga_update_channel_id = match std::env::var("MANGA_UPDATE_CHANNEL_ID") {
+        Ok(id) => match id.parse::<u64>() {
+            Ok(id) => {
+                tracing::info!("watching channel with id {} for mangadex links.", id);
+                Some(ChannelId::new(id))
+            }
+            _ => {
+                tracing::warn!("invalid channel id found. mangadex links will not be watched.");
+                None
+            }
+        },
+        _ => {
+            tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
             None
         }
-    } else {
-        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
-        None
     };
 
-    let mdlist_id = if let Ok(mdlist_id) = md_mdlist_id {
-        if let Ok(id) = uuid::Uuid::try_parse(&mdlist_id) {
-            Some(id)
-        } else {
-            None
-        }
-    } else {
-        None
+    let mdlist_id = match md_mdlist_id {
+        Ok(mdlist_id) => match uuid::Uuid::try_parse(&mdlist_id) {
+            Ok(id) => Some(id),
+            _ => None,
+        },
+        _ => None,
     };
 
     let data = Data {
@@ -306,9 +321,12 @@ async fn main() -> Result<(), anyhow::Error> {
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                poise::builtins::register_globally(ctx, &framework.options().commands)
+                    .await
+                    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when registering commands"))?;
+
                 Ok(data)
-            })
+            }.in_current_span())
         })
         .build();
 
@@ -332,21 +350,28 @@ async fn main() -> Result<(), anyhow::Error> {
     if data_clone.md.is_some() && webhook_url.is_ok() {
         tracing::info!("initialized chapter tracker!");
         let http = serenity::Http::new(&token);
-        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap()).await?;
+        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap())
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when creating webhook"),
+            )?;
 
-        let tracker_handle = tokio::spawn(async move {
-            let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
-            let task = futures::stream::unfold(interval, |mut interval| async {
-                interval.tick().await;
-                let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
+        tokio::spawn(
+            async move {
+                let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
+                let task = futures::stream::unfold(interval, |mut interval| async {
+                    interval.tick().await;
+                    let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
 
-                Some(((), interval))
-            });
+                    Some(((), interval))
+                });
 
-            task.for_each(|_| async {}).await;
-        });
-        tracker_handle.await?;
+                task.for_each(|_| async {}).await;
+            }
+            .in_current_span(),
+        );
     }
+
     bot_handle.await?;
 
     Ok(())
