@@ -215,19 +215,19 @@ async fn main() -> anyhow::Result<()> {
     Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
-    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").map_err(|_| {
+    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").inspect_err(|_| {
         tracing::warn!("missing mangadex client id. manga commands will not be initialized.");
     });
-    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").map_err(|_| {
+    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").inspect_err(|_| {
         tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
     });
-    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").map_err(|_| {
+    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").inspect_err(|_| {
         tracing::warn!("missing mangadex mdlist id. manga commands will not be initialized.");
     });
-    let md_username = std::env::var("MANGADEX_USERNAME").map_err(|_| {
+    let md_username = std::env::var("MANGADEX_USERNAME").inspect_err(|_| {
         tracing::warn!("missing mangadex username. mdlist commands will not be initialized.");
     });
-    let md_password = std::env::var("MANGADEX_PASSWORD").map_err(|_| {
+    let md_password = std::env::var("MANGADEX_PASSWORD").inspect_err(|_| {
         tracing::warn!("missing mangadex password. mdlist commands will not be initialized.");
     });
 
@@ -250,10 +250,9 @@ async fn main() -> anyhow::Result<()> {
                 .password(Password::parse(password)?)
                 .send()
                 .await
-                .map_err(|e| {
-                    tracing::warn!("failed to login to mangadex: {:?}", e);
-                    e
-                })?;
+                .inspect_err(
+                    |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
+                )?;
         }
 
         Some(md_client)
