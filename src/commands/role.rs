@@ -129,7 +129,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
 
 /// remove a self-assignable role from your role list.
 #[poise::command(slash_command, prefix_command)]
-#[tracing::instrument(skip_all, fields(input = %input))]
+#[tracing::instrument(skip_all)]
 pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
     let mut db_roles_find = roles::Entity::find().paginate(&ctx.data().db, 10);
 
