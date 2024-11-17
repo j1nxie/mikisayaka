@@ -347,19 +347,22 @@ async fn main() -> anyhow::Result<()> {
                 |e| tracing::error!(err = ?e, "an error occurred when creating webhook"),
             )?;
 
-        let tracker_handle = tokio::spawn(async move {
-            let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
-            let task = futures::stream::unfold(interval, |mut interval| async {
-                interval.tick().await;
-                let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
+        tokio::spawn(
+            async move {
+                let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
+                let task = futures::stream::unfold(interval, |mut interval| async {
+                    interval.tick().await;
+                    let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
 
-                Some(((), interval))
-            });
+                    Some(((), interval))
+                });
 
-            task.for_each(|_| async {}).await;
-        });
-        tracker_handle.await?;
+                task.for_each(|_| async {}).await;
+            }
+            .in_current_span(),
+        );
     }
+
     bot_handle.await?;
 
     Ok(())
