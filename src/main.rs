@@ -49,145 +49,149 @@ async fn event_handler(
         if let Some(captures) = MD_URL_REGEX.captures(&new_message.content) {
             let uuid = uuid::Uuid::try_parse(&captures[1]);
 
-            if uuid.is_err() {
-                return Ok(());
-            }
+            match uuid {
+                Ok(uuid) => {
+                    let mut msg = new_message
+                        .channel_id
+                        .send_message(
+                            ctx,
+                            CreateMessage::default()
+                                .reference_message(MessageReference::from(new_message))
+                                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                                .content("got a mangadex link! fetching data..."),
+                        )
+                        .await
+                        .inspect_err(
+                            |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                        )?;
 
-            let uuid = uuid.unwrap();
-
-            let mut msg = new_message
-                .channel_id
-                .send_message(
-                    ctx,
-                    CreateMessage::default()
-                        .reference_message(MessageReference::from(new_message))
-                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                        .content("got a mangadex link! fetching data..."),
-                )
-                .await
-                .inspect_err(
-                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
-                )?;
-
-            // FIXME: better error handling here
-            // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
-            let manga = data
-                .md
-                .as_ref()
-                .unwrap()
-                .manga()
-                .id(uuid)
-                .get()
-                .send()
-                .await
-                .inspect_err(
-                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
-                )?;
-
-            let manga_id = manga.data.id;
-            let manga = manga.data.attributes;
-
-            let en_title = manga.title.get(&mangadex_api_types_rust::Language::English);
-
-            let title = match en_title {
-                Some(en_title) => en_title,
-                None => {
-                    match manga
-                        .title
-                        .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
-                    {
-                        Some(jp_ro) => jp_ro,
-                        None => manga
-                            .title
-                            .get(&mangadex_api_types_rust::Language::Japanese)
-                            .unwrap(),
-                    }
-                }
-            };
-
-            let tags = manga
-                .tags
-                .iter()
-                .map(|tag| {
-                    tag.attributes
-                        .name
-                        .get(&mangadex_api_types_rust::Language::English)
+                    // FIXME: better error handling here
+                    // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
+                    let manga = data
+                        .md
+                        .as_ref()
                         .unwrap()
-                        .to_string()
-                })
-                .collect::<Vec<String>>()
-                .join(", ");
+                        .manga()
+                        .id(uuid)
+                        .get()
+                        .send()
+                        .await
+                        .inspect_err(
+                            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+                        )?;
 
-            let statistics = data
-                .md
-                .as_ref()
-                .unwrap()
-                .statistics()
-                .manga()
-                .id(uuid)
-                .get()
-                .send()
-                .await
-                .inspect_err(
-                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
-                )?;
+                    let manga_id = manga.data.id;
+                    let manga = manga.data.attributes;
 
-            let statistics = statistics.statistics.get(&uuid).unwrap();
+                    let en_title = manga.title.get(&mangadex_api_types_rust::Language::English);
 
-            msg.edit(
-                ctx,
-                EditMessage::default()
-                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                    .content("here's your manga!")
-                    .embed(
-                        CreateEmbed::default()
-                            .title(title)
-                            .url(format!("https://mangadex.org/title/{}", manga_id))
-                            // .description(
-                            //     manga
-                            //         .description
-                            //         .get(&mangadex_api_types_rust::Language::English)
-                            //         .unwrap(),
-                            // )
-                            .field("status", manga.status.to_string(), true)
-                            .field(
-                                "year",
-                                match manga.year {
-                                    Some(year) => year.to_string(),
-                                    None => "unknown".to_string(),
-                                },
-                                true,
-                            )
-                            .field(
-                                "demographic",
-                                match manga.publication_demographic {
-                                    Some(demographic) => demographic.to_string(),
-                                    None => "unknown".to_string(),
-                                },
-                                true,
-                            )
-                            .field(
-                                "rating",
-                                match statistics.rating.average {
-                                    Some(avg) => avg.to_string(),
-                                    None => "unknown".to_string(),
-                                },
-                                true,
-                            )
-                            .field("follows", statistics.follows.to_string(), true)
-                            .field(
-                                "content rating",
-                                match manga.content_rating {
-                                    Some(content_rating) => content_rating.to_string(),
-                                    None => "unknown".to_string(),
-                                },
-                                true,
-                            )
-                            .field("tags", tags, false),
-                    ),
-            )
-            .await
-            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
+                    let title = match en_title {
+                        Some(en_title) => en_title,
+                        None => {
+                            match manga
+                                .title
+                                .get(&mangadex_api_types_rust::Language::JapaneseRomanized)
+                            {
+                                Some(jp_ro) => jp_ro,
+                                None => manga
+                                    .title
+                                    .get(&mangadex_api_types_rust::Language::Japanese)
+                                    .unwrap(),
+                            }
+                        }
+                    };
+
+                    let tags = manga
+                        .tags
+                        .iter()
+                        .map(|tag| {
+                            tag.attributes
+                                .name
+                                .get(&mangadex_api_types_rust::Language::English)
+                                .unwrap()
+                                .to_string()
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", ");
+
+                    let statistics = data
+                        .md
+                        .as_ref()
+                        .unwrap()
+                        .statistics()
+                        .manga()
+                        .id(uuid)
+                        .get()
+                        .send()
+                        .await
+                        .inspect_err(
+                            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+                        )?;
+
+                    let statistics = statistics.statistics.get(&uuid).unwrap();
+
+                    msg.edit(
+                        ctx,
+                        EditMessage::default()
+                            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                            .content("here's your manga!")
+                            .embed(
+                                CreateEmbed::default()
+                                    .title(title)
+                                    .url(format!("https://mangadex.org/title/{}", manga_id))
+                                    // .description(
+                                    //     manga
+                                    //         .description
+                                    //         .get(&mangadex_api_types_rust::Language::English)
+                                    //         .unwrap(),
+                                    // )
+                                    .field("status", manga.status.to_string(), true)
+                                    .field(
+                                        "year",
+                                        match manga.year {
+                                            Some(year) => year.to_string(),
+                                            None => "unknown".to_string(),
+                                        },
+                                        true,
+                                    )
+                                    .field(
+                                        "demographic",
+                                        match manga.publication_demographic {
+                                            Some(demographic) => demographic.to_string(),
+                                            None => "unknown".to_string(),
+                                        },
+                                        true,
+                                    )
+                                    .field(
+                                        "rating",
+                                        match statistics.rating.average {
+                                            Some(avg) => avg.to_string(),
+                                            None => "unknown".to_string(),
+                                        },
+                                        true,
+                                    )
+                                    .field("follows", statistics.follows.to_string(), true)
+                                    .field(
+                                        "content rating",
+                                        match manga.content_rating {
+                                            Some(content_rating) => content_rating.to_string(),
+                                            None => "unknown".to_string(),
+                                        },
+                                        true,
+                                    )
+                                    .field("tags", tags, false),
+                            ),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+                    )?;
+                }
+
+                _ => {
+                    return Ok(());
+                }
+            }
         }
     }
     Ok(())
