@@ -11,18 +11,24 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
     let mut chapter_list: Vec<CreateEmbed> = vec![];
 
     for db_manga in manga_list {
-        let manga = data
+        let uuid = db_manga.manga_dex_id;
+
+        let manga = match data
             .md
             .as_ref()
             .unwrap()
             .manga()
-            .id(db_manga.manga_dex_id)
+            .id(uuid)
             .get()
             .send()
             .await
-            .inspect_err(|e|
-                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching manga"),
-            )?;
+        {
+            Ok(manga) => manga,
+            Err(e) => {
+                tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga");
+                continue;
+            }
+        };
 
         let manga_id = manga.data.id;
         let manga = manga.data.attributes;
@@ -43,7 +49,7 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             }
         };
 
-        let chapter_feed = data
+        let chapter_feed = match data
             .md
             .as_ref()
             .unwrap()
@@ -62,9 +68,13 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
             .limit(1u32)
             .send()
             .await
-            .inspect_err(|e|
-                tracing::error!(err = ?e, uuid = %db_manga.manga_dex_id, "an error occurred when fetching chapter feed"),
-            )?;
+        {
+            Ok(feed) => feed,
+            Err(e) => {
+                tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching chapter feed");
+                continue;
+            }
+        };
 
         let mut db_manga_insert = db_manga.into_active_model();
         let now = time::OffsetDateTime::now_utc();
@@ -115,7 +125,10 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
 
         db_manga_insert.last_updated = Set(time::PrimitiveDateTime::new(now.date(), now.time()));
 
-        db_manga_insert.update(&data.db).await?;
+        if let Err(e) = db_manga_insert.update(&data.db).await {
+            tracing::error!(err = ?e, uuid = %uuid, "an error occurred when updating manga in database");
+            continue;
+        };
     }
 
     if chapter_list.is_empty() {
