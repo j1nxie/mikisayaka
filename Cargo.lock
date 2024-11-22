@@ -852,9 +852,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524e8ac6999421f49a846c2d4411f337e53497d8ec55d67753beffa43c5d9205"
+checksum = "ccae279728d634d083c00f6099cb58f01cc99c145b84b8be2f6c74618d79922e"
 dependencies = [
  "atomic-waker",
  "bytes",
@@ -1039,14 +1039,14 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbbff0a806a4728c99295b254c8838933b5b082d75e3cb70c8dab21fdfbcfa9a"
+checksum = "97818827ef4f364230e16705d4706e2897df2bb60617d6ca15d598025a3c481f"
 dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "h2 0.4.6",
+ "h2 0.4.7",
  "http 1.1.0",
  "http-body 1.0.1",
  "httparse",
@@ -1079,7 +1079,7 @@ checksum = "08afdbb5c31130e3034af566421053ab03787c640246a446327f550d11bcb333"
 dependencies = [
  "futures-util",
  "http 1.1.0",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "rustls 0.23.17",
  "rustls-pki-types",
@@ -1097,7 +1097,7 @@ checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
 dependencies = [
  "bytes",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-util",
  "native-tls",
  "tokio",
@@ -1116,7 +1116,7 @@ dependencies = [
  "futures-util",
  "http 1.1.0",
  "http-body 1.0.1",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "pin-project-lite",
  "socket2",
  "tokio",
@@ -1411,8 +1411,9 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "mangadex-api"
-version = "3.3.0"
-source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
+version = "3.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c38c1d26e49aa78a157ae00fd6fecc25ba1a48cc9fd492c683261ef8f8af96a"
 dependencies = [
  "derive_builder",
  "futures",
@@ -1420,8 +1421,9 @@ dependencies = [
  "mangadex-api-types-rust",
  "reqwest 0.12.9",
  "serde",
+ "serde_json",
  "serde_qs",
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
  "time",
  "tokio",
  "url",
@@ -1430,28 +1432,30 @@ dependencies = [
 
 [[package]]
 name = "mangadex-api-schema-rust"
-version = "0.9.0"
-source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173594a603c5fa60d595b8a9d279e9f71cf37f47822bf63f52a1c5630fb11d85"
 dependencies = [
  "mangadex-api-types-rust",
  "reqwest 0.12.9",
  "serde",
+ "serde_json",
  "serde_qs",
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
  "url",
  "uuid",
 ]
 
 [[package]]
 name = "mangadex-api-types-rust"
-version = "0.9.0"
-source = "git+https://github.com/j1nxie/mangadex-api?branch=feat/custom_list_resexp#37300f0f22a75602e09ae310b47a2127792335df"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aba7e2f922e38ff75d3dd1e75bee2baddec1f38ddb54ac0301ba4e39646179e6"
 dependencies = [
- "anyhow",
  "derive_builder",
  "reqwest 0.12.9",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
  "time",
  "url",
  "uuid",
@@ -2169,11 +2173,11 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
- "h2 0.4.6",
+ "h2 0.4.7",
  "http 1.1.0",
  "http-body 1.0.1",
  "http-body-util",
- "hyper 1.5.0",
+ "hyper 1.5.1",
  "hyper-rustls 0.27.3",
  "hyper-tls",
  "hyper-util",
@@ -2193,7 +2197,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "sync_wrapper 1.0.1",
+ "sync_wrapper 1.0.2",
  "system-configuration 0.6.1",
  "tokio",
  "tokio-native-tls",
@@ -2397,9 +2401,9 @@ dependencies = [
 
 [[package]]
 name = "schannel"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01227be5826fa0690321a2ba6c5cd57a19cf3f6a09e76973b58e61de6ab9d1c1"
+checksum = "1f29ebaa345f945cec9fbbc532eb307f0fdad8161f281b6369539c8d84876b3d"
 dependencies = [
  "windows-sys 0.59.0",
 ]
@@ -3081,9 +3085,9 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
 name = "sync_wrapper"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
+checksum = "0bf256ce5efdfa370213c1dabab5935a12e49f2c58d15e9eac2870d3b4f27263"
 dependencies = [
  "futures-core",
 ]

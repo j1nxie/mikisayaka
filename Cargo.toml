@@ -9,12 +9,9 @@ anyhow = "1.0.86"
 chrono = "0.4.38"
 dotenvy = "0.15.7"
 futures = "0.3.31"
-mangadex-api = { git = "https://github.com/j1nxie/mangadex-api", branch = "feat/custom_list_resexp", features = [
-    "multi-thread",
-    "tokio-multi-thread",
-] }
-mangadex-api-schema-rust = { git = "https://github.com/j1nxie/mangadex-api", branch = "feat/custom_list_resexp" }
-mangadex-api-types-rust = { git = "https://github.com/j1nxie/mangadex-api", branch = "feat/custom_list_resexp" }
+mangadex-api = { version = "3.4.1", features = ["multi-thread", "tokio-multi-thread"] }
+mangadex-api-schema-rust = "0.10.0"
+mangadex-api-types-rust = "0.10.0"
 poise = { version = "0.6.1", features = ["cache"] }
 rand = "0.8.5"
 regex = "1.11.0"
@@ -26,7 +23,12 @@ sea-orm = { version = "1.0.1", features = [
     "with-time",
     "with-uuid",
 ], default-features = false }
-sea-orm-migration = { version = "1.0.0", features = ["with-time", "sqlx-sqlite", "runtime-tokio-rustls", "with-uuid"], default-features = false }
+sea-orm-migration = { version = "1.0.0", features = [
+    "with-time",
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "with-uuid",
+], default-features = false }
 semver = "1.0.23"
 time = "0.3.36"
 tokio = { version = "1.39.2", features = ["rt-multi-thread", "tracing"] }
