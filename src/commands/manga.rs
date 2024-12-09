@@ -267,6 +267,14 @@ pub async fn add(
 
     let mut resp_string = String::new();
 
+    ctx.channel_id()
+        .edit_message(
+            &ctx.http(),
+            ctx.id(),
+            EditMessage::new().suppress_embeds(true),
+        )
+        .await?;
+
     let _ = builder
         .add_manga_id(uuid)
         .version(mdlist.data.attributes.version)

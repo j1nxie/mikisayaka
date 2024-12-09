@@ -130,6 +130,15 @@ async fn event_handler(
 
                     let statistics = statistics.statistics.get(&uuid).unwrap();
 
+                    new_message
+                        .channel_id
+                        .edit_message(
+                            &ctx.http,
+                            new_message.id,
+                            EditMessage::new().suppress_embeds(true),
+                        )
+                        .await?;
+
                     msg.edit(
                         ctx,
                         EditMessage::default()
@@ -139,12 +148,16 @@ async fn event_handler(
                                 CreateEmbed::default()
                                     .title(title)
                                     .url(format!("https://mangadex.org/title/{}", manga_id))
-                                    // .description(
-                                    //     manga
-                                    //         .description
-                                    //         .get(&mangadex_api_types_rust::Language::English)
-                                    //         .unwrap(),
-                                    // )
+                                    .description(
+                                        manga
+                                            .description
+                                            .get(&mangadex_api_types_rust::Language::English)
+                                            .unwrap(),
+                                    )
+                                    .image(format!(
+                                        "https://og.mangadex.org/og-image/manga/{}",
+                                        manga_id
+                                    ))
                                     .field("status", manga.status.to_string(), true)
                                     .field(
                                         "year",
