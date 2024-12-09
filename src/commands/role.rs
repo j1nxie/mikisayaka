@@ -11,7 +11,6 @@ use crate::{models::roles, Context, Error};
 
 /// commands related to self-assignable roles.
 #[poise::command(
-    slash_command,
     prefix_command,
     subcommand_required,
     guild_only,
@@ -23,7 +22,7 @@ pub async fn role(_: Context<'_>) -> Result<(), Error> {
 }
 
 /// add a self-assignable role from list.
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
 pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
     let mut db_roles_find = roles::Entity::find().paginate(&ctx.data().db, 10);
@@ -128,7 +127,7 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// remove a self-assignable role from your role list.
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
 pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
     let mut db_roles_find = roles::Entity::find().paginate(&ctx.data().db, 10);

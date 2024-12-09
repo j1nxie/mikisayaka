@@ -8,7 +8,7 @@ use crate::{
 use poise::serenity_prelude as serenity;
 
 /// get the bot's status.
-#[poise::command(prefix_command, slash_command)]
+#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(poise::CreateReply::default().embed(

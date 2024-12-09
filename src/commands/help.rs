@@ -1,7 +1,7 @@
 use crate::{Context, Error};
 
 /// print the list of commands and their usage
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(slash_command)]
 #[tracing::instrument(skip_all)]
 pub async fn help(
     ctx: Context<'_>,

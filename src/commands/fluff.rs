@@ -5,7 +5,7 @@ use crate::{Context, Error};
 /// あたしって、ほんとばか。
 ///
 /// you want to listen to squartatrice? here you go.
-#[poise::command(prefix_command, slash_command)]
+#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
 pub async fn squartatrice(ctx: Context<'_>) -> Result<(), Error> {
     let random_number = rand::random::<u8>();
