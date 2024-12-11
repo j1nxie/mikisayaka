@@ -351,7 +351,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("missing discord webhook url. tracker will not be initialized.");
     });
 
-    let client = serenity::ClientBuilder::new(&token, intents)
+    let mut client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
         .activity(serenity::ActivityData {
             name: "squartatrice - 美樹 さやか vs. 美樹 さやか (fw. 美樹 さやか)".into(),
@@ -359,26 +359,23 @@ async fn main() -> anyhow::Result<()> {
             state: None,
             url: None,
         })
-        .await;
+        .await
+        .unwrap();
+
+    let http = client.http.clone();
 
     tracing::info!("finished initializing!");
-    let bot_handle = tokio::spawn(async move { client.unwrap().start().await.unwrap() });
+    let bot_handle = tokio::spawn(async move { client.start().await.unwrap() });
 
     if data_clone.md.is_some() && webhook_url.is_ok() {
         tracing::info!("initialized chapter tracker!");
-        let http = serenity::Http::new(&token);
-        let webhook = serenity::Webhook::from_url(&http, &webhook_url.unwrap())
-            .await
-            .inspect_err(
-                |e| tracing::error!(err = ?e, "an error occurred when creating webhook"),
-            )?;
 
         tokio::spawn(
             async move {
                 let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
                 let task = futures::stream::unfold(interval, |mut interval| async {
                     interval.tick().await;
-                    let _ = chapter_tracker::chapter_tracker(&http, &webhook, &data_clone).await;
+                    let _ = chapter_tracker::chapter_tracker(&http, &data_clone).await;
 
                     Some(((), interval))
                 });

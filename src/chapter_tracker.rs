@@ -1,11 +1,11 @@
 use mangadex_api_types_rust::MangaFeedSortOrder;
-use poise::serenity_prelude::{CreateEmbed, ExecuteWebhook, Http, Webhook};
+use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
 use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
 
 #[tracing::instrument(skip_all)]
-pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Result<(), Error> {
+pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
     let manga_list = manga::Entity::find().all(&data.db).await?;
 
     let mut chapter_list: Vec<CreateEmbed> = vec![];
@@ -139,27 +139,29 @@ pub async fn chapter_tracker(http: &Http, webhook: &Webhook, data: &Data) -> Res
         let chunks = chapter_list.chunks(10);
 
         for chunk in chunks {
-            let builder = ExecuteWebhook::new()
-                .content("New chapters are out!")
-                .embeds(chunk.to_vec());
-
-            webhook.execute(http, false, builder).await?;
+            data.manga_update_channel_id
+                .unwrap()
+                .send_message(
+                    &http,
+                    CreateMessage::default()
+                        .content("New chapters are out!")
+                        .embeds(chunk.to_vec()),
+                )
+                .await?;
         }
 
         return Ok(());
     }
 
-    let builder = ExecuteWebhook::new()
-        .content("New chapters are out!")
-        .embeds(chapter_list)
-        .avatar_url(
-            http.get_current_user()
-                .await?
-                .avatar_url()
-                .unwrap_or_default(),
-        );
-
-    webhook.execute(http, false, builder).await?;
+    data.manga_update_channel_id
+        .unwrap()
+        .send_message(
+            &http,
+            CreateMessage::default()
+                .content("New chapters are out!")
+                .embeds(chapter_list),
+        )
+        .await?;
 
     Ok(())
 }
