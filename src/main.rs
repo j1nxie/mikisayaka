@@ -149,10 +149,13 @@ async fn event_handler(
                                     .title(title)
                                     .url(format!("https://mangadex.org/title/{}", manga_id))
                                     .description(
-                                        manga
+                                        match manga
                                             .description
                                             .get(&mangadex_api_types_rust::Language::English)
-                                            .unwrap(),
+                                        {
+                                            Some(d) => d,
+                                            None => "",
+                                        },
                                     )
                                     .image(format!(
                                         "https://og.mangadex.org/og-image/manga/{}",
