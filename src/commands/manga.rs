@@ -82,7 +82,7 @@ pub async fn add(
         .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when refreshing token"))?;
 
     let uuid = match MD_URL_REGEX.captures(&input) {
-        Some(captures) => match uuid::Uuid::try_parse(&captures[1]) {
+        Ok(Some(captures)) => match uuid::Uuid::try_parse(&captures[1]) {
             Ok(u) => {
                 tracing::info!(uuid = %u, "got uuid from link");
                 u
@@ -102,7 +102,7 @@ pub async fn add(
                 return Ok(());
             }
         },
-        None => match uuid::Uuid::try_parse(&input) {
+        Ok(None) => match uuid::Uuid::try_parse(&input) {
             Ok(u) => {
                 tracing::info!(uuid = %u, "got uuid from input string");
                 u
@@ -122,6 +122,19 @@ pub async fn add(
                 return Ok(());
             }
         },
+        Err(e) => {
+            tracing::error!(err = ?e, "an error occurred when parsing input");
+            ctx.send(
+                poise::CreateReply::default()
+                    .reply(true)
+                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                    .content("an error occurred when parsing input."),
+            )
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+
+            return Ok(());
+        }
     };
 
     let manga_list = manga::Entity::find()

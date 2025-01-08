@@ -46,7 +46,7 @@ async fn event_handler(
             return Ok(());
         }
 
-        if let Some(captures) = MD_URL_REGEX.captures(&new_message.content) {
+        if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content) {
             let uuid = uuid::Uuid::try_parse(&captures[1]);
 
             match uuid {

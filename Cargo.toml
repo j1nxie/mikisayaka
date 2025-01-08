@@ -8,13 +8,13 @@ build = "build.rs"
 anyhow = "1.0.86"
 chrono = "0.4.38"
 dotenvy = "0.15.7"
+fancy-regex = "0.14.0"
 futures = "0.3.31"
 mangadex-api = { version = "3.4.1", features = ["multi-thread", "tokio-multi-thread"] }
 mangadex-api-schema-rust = "0.10.0"
 mangadex-api-types-rust = "0.10.0"
 poise = { version = "0.6.1", features = ["cache"] }
 rand = "0.8.5"
-regex = "1.11.0"
 rustc_version_runtime = "0.3.0"
 sea-orm = { version = "1.0.1", features = [
     "macros",
