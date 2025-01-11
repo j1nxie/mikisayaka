@@ -102,8 +102,8 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
                         .url(format!("https://mangadex.org/chapter/{}", chapter.id))
                         .description(vol_chap_str)
                         .image(format!(
-                            "https://og.mangadex.org/og-image/manga/{}",
-                            manga_id
+                            "https://og.mangadex.org/og-image/chapter/{}",
+                            chapter.id
                         ));
 
                     if let Some(timestamp) = chapter_data.publish_at {
