@@ -350,10 +350,6 @@ async fn main() -> anyhow::Result<()> {
         })
         .build();
 
-    let webhook_url = std::env::var("DISCORD_WEBHOOK_URL").map_err(|_| {
-        tracing::warn!("missing discord webhook url. tracker will not be initialized.");
-    });
-
     let mut client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
         .activity(serenity::ActivityData {
@@ -370,7 +366,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("finished initializing!");
     let bot_handle = tokio::spawn(async move { client.start().await.unwrap() });
 
-    if data_clone.md.is_some() && webhook_url.is_ok() {
+    if data_clone.md.is_some() {
         tracing::info!("initialized chapter tracker!");
 
         tokio::spawn(
