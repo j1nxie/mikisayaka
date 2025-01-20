@@ -180,7 +180,7 @@ async fn event_handler(
                                     )
                                     .field(
                                         "rating",
-                                        match statistics.rating.average {
+                                        match statistics.rating.bayesian {
                                             Some(avg) => avg.to_string(),
                                             None => "unknown".to_string(),
                                         },
