@@ -30,7 +30,6 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
             }
         };
 
-        let manga_id = manga.data.id;
         let manga = manga.data.attributes;
 
         let title = match manga.title.get(&mangadex_api_types_rust::Language::English) {

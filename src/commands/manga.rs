@@ -169,6 +169,7 @@ pub async fn add(
         .inspect_err(
             |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
         )?;
+    let manga_id = manga.data.id;
 
     let chapter_feed = ctx
         .data()
@@ -215,8 +216,8 @@ pub async fn add(
     if manga::Entity::find()
         .filter(manga::Column::MangaDexId.eq(uuid))
         .one(&ctx.data().db)
-        .await.
-        inspect_err(|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga from database"))?
+        .await
+        .inspect_err(|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga from database"))?
         .is_some()
     {
         ctx.send(
@@ -224,7 +225,7 @@ pub async fn add(
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
                 .content(format!(
-                    "title **{}** is already in the tracking list.",
+                    "**{}** is already in the tracking list.",
                     title
                 )),
         )
@@ -233,6 +234,36 @@ pub async fn add(
 
         return Ok(());
     }
+
+    let tags = manga
+        .tags
+        .iter()
+        .map(|tag| {
+            tag.attributes
+                .name
+                .get(&mangadex_api_types_rust::Language::English)
+                .unwrap()
+                .to_string()
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    let statistics = ctx
+        .data()
+        .md
+        .as_ref()
+        .unwrap()
+        .statistics()
+        .manga()
+        .id(uuid)
+        .get()
+        .send()
+        .await
+        .inspect_err(
+            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+        )?;
+
+    let statistics = statistics.statistics.get(&uuid).unwrap();
 
     let latest_chapter_date = if chapter_feed.result == mangadex_api_types_rust::ResultType::Ok
         && !chapter_feed.data.is_empty()
@@ -304,7 +335,60 @@ pub async fn add(
         poise::CreateReply::default()
             .reply(true)
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-            .content(resp_string + &format!("added title [**{}**](https://mangadex.org/title/{}) to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid)),
+            .content(resp_string + &format!("added [**{}**](https://mangadex.org/title/{}) to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid))
+            .embed(
+                CreateEmbed::default()
+                    .title(title)
+                    .url(format!("https://mangadex.org/title/{}", manga_id))
+                    .description(
+                        match manga
+                            .description
+                            .get(&mangadex_api_types_rust::Language::English)
+                        {
+                            Some(d) => d,
+                            None => "",
+                        },
+                    )
+                    .image(format!(
+                        "https://og.mangadex.org/og-image/manga/{}",
+                        manga_id
+                    ))
+                    .field("status", manga.status.to_string(), true)
+                    .field(
+                        "year",
+                        match manga.year {
+                            Some(year) => year.to_string(),
+                            None => "unknown".to_string(),
+                        },
+                        true,
+                    )
+                    .field(
+                        "demographic",
+                        match manga.publication_demographic {
+                            Some(demographic) => demographic.to_string(),
+                            None => "unknown".to_string(),
+                        },
+                        true,
+                    )
+                    .field(
+                        "rating",
+                        match statistics.rating.bayesian {
+                            Some(avg) => avg.to_string(),
+                            None => "unknown".to_string(),
+                        },
+                        true,
+                    )
+                    .field("follows", statistics.follows.to_string(), true)
+                    .field(
+                        "content rating",
+                        match manga.content_rating {
+                            Some(content_rating) => content_rating.to_string(),
+                            None => "unknown".to_string(),
+                        },
+                        true,
+                    )
+                    .field("tags", tags, false),
+            ),
     )
     .await
     .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
