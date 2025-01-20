@@ -19,22 +19,12 @@ pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
 
     if let Ok(semver) = semver {
-        // FIXME: for some reason, vergen is not setting the git sha properly, instead setting it
-        // to "VERGEN_IDEMPOTENT_OUTPUT" in the CI
-        if env!("VERGEN_GIT_SHA") == "VERGEN_IDEMPOTENT_OUTPUT" {
-            format!(
-                "{} - {}",
-                semver,
-                MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize]
-            )
-        } else {
-            format!(
-                "{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
-                semver,
-                MADOKA_MAGICA[(semver.major + semver.minor - 1) as usize],
-                env!("VERGEN_GIT_SHA"),
-            )
-        }
+        format!(
+            "{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
+            semver,
+            MADOKA_MAGICA[(3) as usize],
+            env!("VERGEN_GIT_SHA"),
+        )
     } else {
         tracing::warn!("couldn't parse a semver out of Cargo.toml? defaulting to 0.0.0-unknown.");
         String::from("0.0.0-unknown - No Version Name")
