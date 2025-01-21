@@ -20,13 +20,13 @@ pub fn get_version() -> String {
 
     if let Ok(semver) = semver {
         format!(
-            "{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
+            "v{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
             semver,
-            MADOKA_MAGICA[(3) as usize],
+            MADOKA_MAGICA[3],
             env!("VERGEN_GIT_SHA"),
         )
     } else {
         tracing::warn!("couldn't parse a semver out of Cargo.toml? defaulting to 0.0.0-unknown.");
-        String::from("0.0.0-unknown - No Version Name")
+        String::from("v0.0.0-unknown - No Version Name")
     }
 }
