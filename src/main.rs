@@ -253,8 +253,8 @@ async fn main() -> anyhow::Result<()> {
     let md = match (
         std::env::var("MANGADEX_CLIENT_ID"),
         std::env::var("MANGADEX_CLIENT_SECRET"),
-        std::env::var("MANGADEX_CLIENT_USERNAME"),
-        std::env::var("MANGADEX_CLIENT_PASSWORD"),
+        std::env::var("MANGADEX_USERNAME"),
+        std::env::var("MANGADEX_PASSWORD"),
     ) {
         (Ok(client_id), Ok(client_secret), Ok(username), Ok(password)) => {
             let md_client = MangaDexClient::default();
