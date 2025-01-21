@@ -134,33 +134,23 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
         return Ok(());
     }
 
-    if chapter_list.len() > 10 {
-        let chunks = chapter_list.chunks(10);
+    let chunks = chapter_list.chunks(10);
 
-        for chunk in chunks {
-            data.manga_update_channel_id
-                .unwrap()
-                .send_message(
-                    &http,
-                    CreateMessage::default()
-                        .content("New chapters are out!")
-                        .embeds(chunk.to_vec()),
-                )
-                .await?;
-        }
-
-        return Ok(());
+    for chunk in chunks {
+        data.manga_update_channel_id
+            .unwrap()
+            .send_message(
+                &http,
+                CreateMessage::default()
+                    .content(if chunk.len() > 1 {
+                        "New chapters are out!"
+                    } else {
+                        "A new chapter is out!"
+                    })
+                    .embeds(chunk.to_vec()),
+            )
+            .await?;
     }
-
-    data.manga_update_channel_id
-        .unwrap()
-        .send_message(
-            &http,
-            CreateMessage::default()
-                .content("New chapters are out!")
-                .embeds(chapter_list),
-        )
-        .await?;
 
     Ok(())
 }
