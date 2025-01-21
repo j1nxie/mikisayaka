@@ -241,24 +241,22 @@ async fn main() -> anyhow::Result<()> {
     Migrator::up(&db, None).await?;
 
     tracing::info!("initializing mangadex client...");
-    let md_client_id = std::env::var("MANGADEX_CLIENT_ID").inspect_err(|_| {
-        tracing::warn!("missing mangadex client id. manga commands will not be initialized.");
-    });
-    let md_client_secret = std::env::var("MANGADEX_CLIENT_SECRET").inspect_err(|_| {
-        tracing::warn!("missing mangadex client secret. manga commands will not be initialized.");
-    });
-    let md_mdlist_id = std::env::var("MANGADEX_MDLIST_ID").inspect_err(|_| {
-        tracing::warn!("missing mangadex mdlist id. manga commands will not be initialized.");
-    });
-    let md_username = std::env::var("MANGADEX_USERNAME").inspect_err(|_| {
-        tracing::warn!("missing mangadex username. mdlist commands will not be initialized.");
-    });
-    let md_password = std::env::var("MANGADEX_PASSWORD").inspect_err(|_| {
-        tracing::warn!("missing mangadex password. mdlist commands will not be initialized.");
-    });
 
-    let md = match (md_client_id, md_client_secret) {
-        (Ok(client_id), Ok(client_secret)) => {
+    let mdlist_id = std::env::var("MANGADEX_MDLIST_ID")
+        .ok()
+        .and_then(|id| uuid::Uuid::try_parse(&id).ok());
+
+    if mdlist_id.is_none() {
+        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
+    }
+
+    let md = match (
+        std::env::var("MANGADEX_CLIENT_ID"),
+        std::env::var("MANGADEX_CLIENT_SECRET"),
+        std::env::var("MANGADEX_CLIENT_USERNAME"),
+        std::env::var("MANGADEX_CLIENT_PASSWORD"),
+    ) {
+        (Ok(client_id), Ok(client_secret), Ok(username), Ok(password)) => {
             let md_client = MangaDexClient::default();
 
             md_client
@@ -268,49 +266,37 @@ async fn main() -> anyhow::Result<()> {
                 })
                 .await?;
 
-            if let (Ok(username), Ok(password)) = (md_username, md_password) {
-                tracing::info!("logging in to mangadex...");
-                md_client
-                    .oauth()
-                    .login()
-                    .username(Username::parse(username)?)
-                    .password(Password::parse(password)?)
-                    .send()
-                    .await
-                    .inspect_err(
-                        |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
-                    )?;
-            }
+            tracing::info!("logging in to mangadex...");
+            md_client
+                .oauth()
+                .login()
+                .username(Username::parse(username)?)
+                .password(Password::parse(password)?)
+                .send()
+                .await
+                .inspect_err(
+                    |e| tracing::warn!(err = ?e, "an error occurred when logging into mangadex"),
+                )?;
 
             Some(md_client)
         }
-        _ => None,
-    };
-
-    let manga_update_channel_id = match std::env::var("MANGA_UPDATE_CHANNEL_ID") {
-        Ok(id) => match id.parse::<u64>() {
-            Ok(id) => {
-                tracing::info!("watching channel with id {} for mangadex links.", id);
-                Some(ChannelId::new(id))
-            }
-            _ => {
-                tracing::warn!("invalid channel id found. mangadex links will not be watched.");
-                None
-            }
-        },
         _ => {
-            tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
+            tracing::warn!("missing mangadex credentials - manga features will be disabled");
             None
         }
     };
 
-    let mdlist_id = match md_mdlist_id {
-        Ok(mdlist_id) => match uuid::Uuid::try_parse(&mdlist_id) {
-            Ok(id) => Some(id),
-            _ => None,
-        },
-        _ => None,
-    };
+    let manga_update_channel_id = std::env::var("MANGA_UPDATE_CHANNEL_ID")
+        .ok()
+        .and_then(|id| id.parse::<u64>().ok())
+        .map(|id| {
+            tracing::info!("watching channel with id {} for mangadex links.", id);
+            ChannelId::new(id)
+        });
+
+    if manga_update_channel_id.is_none() {
+        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
+    }
 
     let data = Data {
         manga_update_channel_id,
