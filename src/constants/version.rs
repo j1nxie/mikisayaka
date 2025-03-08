@@ -22,7 +22,7 @@ pub fn get_version() -> String {
         format!(
             "v{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
             semver,
-            MADOKA_MAGICA[3],
+            MADOKA_MAGICA[4],
             env!("VERGEN_GIT_SHA"),
         )
     } else {
