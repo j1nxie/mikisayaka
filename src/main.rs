@@ -41,10 +41,10 @@ async fn event_handler(
 ) -> Result<(), Error> {
     if let serenity::FullEvent::Message { new_message } = event {
         if new_message.author.bot
-            || data.md.is_none()
-            || data.manga_update_channel_id.is_none()
-            || (new_message.channel_id != data.manga_update_channel_id.unwrap()
-                || new_message.channel_id != data.music_channel_id.unwrap())
+            || (data.md.is_none()
+                || data.manga_update_channel_id.is_none()
+                || (new_message.channel_id != data.manga_update_channel_id.unwrap()
+                    && new_message.channel_id != data.music_channel_id.unwrap()))
             || new_message.content.starts_with("s>")
         {
             return Ok(());
