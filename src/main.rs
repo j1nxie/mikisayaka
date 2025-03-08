@@ -1,8 +1,9 @@
-use constants::{MD_URL_REGEX, STARTUP_TIME};
+use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
 use migrator::Migrator;
+use models::songlink::SonglinkResponse;
 use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
     MessageReference,
@@ -15,6 +16,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[derive(Clone)]
 struct Data {
     manga_update_channel_id: Option<ChannelId>,
+    music_channel_id: Option<ChannelId>,
+    reqwest_client: reqwest::Client,
     db: DatabaseConnection,
     md: Option<MangaDexClient>,
     mdlist_id: Option<uuid::Uuid>,
@@ -41,9 +44,140 @@ async fn event_handler(
             || data.md.is_none()
             || data.manga_update_channel_id.is_none()
             || new_message.channel_id != data.manga_update_channel_id.unwrap()
+            || new_message.channel_id != data.music_channel_id.unwrap()
             || new_message.content.starts_with("s>")
         {
             return Ok(());
+        }
+
+        if let Ok(Some(captures)) = YOUTUBE_URL_REGEX.captures(&new_message.content) {
+            let mut msg = new_message
+                .channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::default()
+                        .reference_message(MessageReference::from(new_message))
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("got a youtube link! attempting to match it with songlink..."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
+
+            let url_encoded = urlencoding::encode(&captures[0]);
+
+            let res = data
+                .reqwest_client
+                .get(format!(
+                    "https://api.song.link/v1-alpha.1/links?url={}&userCountry=JP",
+                    url_encoded
+                ))
+                .send()
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when fetching song from songlink")
+                )?;
+
+            let res: SonglinkResponse = res.json().await.inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when decoding songlink response"),
+            )?;
+
+            match res.links_by_platform.spotify {
+                Some(spotify) => {
+                    msg.edit(
+                        ctx,
+                        EditMessage::default()
+                            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                            .content(format!("here's your spotify link: {}", spotify.url)),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+                    )?;
+                }
+                None => {
+                    msg.edit(
+                        ctx,
+                        EditMessage::default()
+                            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                            .content("i didn't match anything for your link..."),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+                    )?;
+
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                    msg.delete(ctx).await?;
+                }
+            }
+        }
+
+        if let Ok(Some(captures)) = SPOTIFY_URL_REGEX.captures(&new_message.content) {
+            let mut msg = new_message
+                .channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::default()
+                        .reference_message(MessageReference::from(new_message))
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content("got a spotify link! attempting to match it with songlink..."),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
+
+            let url_encoded = urlencoding::encode(&captures[0]);
+
+            let res = data
+                        .reqwest_client
+                        .get(format!(
+                            "https://api.song.link/v1-alpha.1/links?url={}&userCountry=JP",
+                            url_encoded
+                        ))
+                        .send()
+                        .await
+                        .inspect_err(
+                            |e| tracing::error!(err = ?e, "an error occurred when fetching song from songlink")
+                        )?;
+
+            let res: SonglinkResponse = res.json().await.inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when decoding songlink response"),
+            )?;
+
+            match res.links_by_platform.youtube_music {
+                Some(youtube_music) => {
+                    msg.edit(
+                        ctx,
+                        EditMessage::default()
+                            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                            .content(format!("here's your youtube link: {}", youtube_music.url)),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+                    )?;
+                }
+                None => {
+                    msg.edit(
+                        ctx,
+                        EditMessage::default()
+                            .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                            .content("i didn't match anything for your link..."),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+                    )?;
+
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                    msg.delete(ctx).await?;
+                }
+            }
         }
 
         if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content) {
@@ -210,6 +344,7 @@ async fn event_handler(
             }
         }
     }
+
     Ok(())
 }
 
@@ -298,8 +433,24 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
     }
 
+    let music_channel_id = std::env::var("MUSIC_CHANNEL_ID")
+        .ok()
+        .and_then(|id| id.parse::<u64>().ok())
+        .map(|id| {
+            tracing::info!("watching channel with id {} for youtube links.", id);
+            ChannelId::new(id)
+        });
+
+    let reqwest_client = reqwest::Client::new();
+
+    if music_channel_id.is_none() {
+        tracing::warn!("no music channel id found. youtube links will not be watched.");
+    }
+
     let data = Data {
         manga_update_channel_id,
+        music_channel_id,
+        reqwest_client,
         db,
         md,
         mdlist_id,

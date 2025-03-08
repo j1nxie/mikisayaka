@@ -8,6 +8,15 @@ pub static STARTUP_TIME: LazyLock<std::time::SystemTime> =
 pub static MD_URL_REGEX: LazyLock<fancy_regex::Regex> = LazyLock::new(|| {
     fancy_regex::Regex::new(r"(?<!<)https://mangadex\.org/title/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?!>)").unwrap()
 });
+pub static YOUTUBE_URL_REGEX: LazyLock<fancy_regex::Regex> = LazyLock::new(|| {
+    fancy_regex::Regex::new(r"(?:https?://)?(?:(?:www\.)?youtube\.com/watch\?v=|(?:www\.)?youtu\.be/|(?:music\.youtube\.com)/watch\?v=)([a-zA-Z0-9_-]{11})").unwrap()
+});
+pub static SPOTIFY_URL_REGEX: LazyLock<fancy_regex::Regex> = LazyLock::new(|| {
+    fancy_regex::Regex::new(
+        r"(?:https?://)?(?:open\.)?spotify\.com/(?:track|album)/([a-zA-Z0-9]{22})(?:\?.*)?",
+    )
+    .unwrap()
+});
 pub static AZUKI_MANGA: LazyLock<uuid::Uuid> =
     LazyLock::new(|| uuid::Uuid::try_parse("5fed0576-8b94-4f9a-b6a7-08eecd69800d").unwrap());
 pub static BILIBILI_COMICS: LazyLock<uuid::Uuid> =
