@@ -295,12 +295,13 @@ async fn event_handler(
                                         "https://og.mangadex.org/og-image/manga/{}",
                                         manga_id
                                     ))
-                                    .field("status", manga.status.to_string(), true)
                                     .field(
-                                        "year",
+                                        "publication",
                                         match manga.year {
-                                            Some(year) => year.to_string(),
-                                            None => "unknown".to_string(),
+                                            Some(year) => {
+                                                format!("{}, {}", year, manga.status)
+                                            }
+                                            None => manga.status.to_string(),
                                         },
                                         true,
                                     )
