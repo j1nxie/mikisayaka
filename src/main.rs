@@ -315,7 +315,7 @@ async fn event_handler(
                                     .field(
                                         "rating",
                                         match statistics.rating.bayesian {
-                                            Some(avg) => avg.to_string(),
+                                            Some(avg) => format!("{:.02}", avg),
                                             None => "unknown".to_string(),
                                         },
                                         true,
