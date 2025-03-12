@@ -1,6 +1,7 @@
-FROM rust:1.81.0-slim-bookworm AS build
+FROM rust:1.85.0-slim-bookworm AS base
 RUN apt update && apt install -y build-essential pkg-config libssl-dev git
 
+FROM base AS deps
 WORKDIR /app
 COPY .git .git
 COPY Cargo.toml Cargo.toml
@@ -9,6 +10,8 @@ COPY build.rs build.rs
 RUN mkdir src; echo 'fn main() {}' > src/main.rs
 RUN cargo install --locked --path .
 RUN rm -rf src;
+
+FROM deps AS build
 COPY src src
 RUN touch src/main.rs
 RUN cargo build --release
