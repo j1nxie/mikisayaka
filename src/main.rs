@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
@@ -5,8 +7,8 @@ use mangadex_api_types_rust::{Password, Username};
 use migrator::Migrator;
 use models::songlink::SonglinkResponse;
 use poise::serenity_prelude::{
-    self as serenity, ChannelId, CreateAllowedMentions, CreateEmbed, CreateMessage, EditMessage,
-    MessageReference,
+    self as serenity, ChannelId, CreateActionRow, CreateAllowedMentions, CreateButton, CreateEmbed,
+    CreateMessage, EditMessage, EmojiId, MessageReference,
 };
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
@@ -264,6 +266,33 @@ async fn event_handler(
 
                     let statistics = statistics.statistics.get(&uuid).unwrap();
 
+                    let buttons = match manga.links {
+                        Some(links) => {
+                            let mut result = vec![];
+
+                            if let Some(anilist) = links.anilist {
+                                result.push(
+                                    CreateButton::new_link(format!(
+                                        "https://anilist.co/manga/{anilist}"
+                                    ))
+                                    .label("AniList")
+                                    .emoji(EmojiId::new(1349211782287331398)),
+                                );
+                            }
+
+                            if let Some(mal) = links.my_anime_list {
+                                result.push(
+                                    CreateButton::new_link(mal.to_string())
+                                        .label("MyAnimeList")
+                                        .emoji(EmojiId::new(1349211802537562253)),
+                                );
+                            }
+
+                            result
+                        }
+                        None => vec![],
+                    };
+
                     new_message
                         .channel_id
                         .edit_message(
@@ -331,7 +360,8 @@ async fn event_handler(
                                         true,
                                     )
                                     .field("tags", tags, false),
-                            ),
+                            )
+                            .components(vec![CreateActionRow::Buttons(buttons)]),
                     )
                     .await
                     .inspect_err(
