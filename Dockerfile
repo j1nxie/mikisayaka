@@ -5,15 +5,18 @@ FROM base AS deps
 WORKDIR /app
 COPY Cargo.toml Cargo.toml
 COPY Cargo.lock Cargo.lock
-COPY build.rs build.rs
 RUN mkdir src; echo 'fn main() {}' > src/main.rs
+RUN echo 'pub fn main() {}' > build.rs
 RUN cargo install --locked --path .
-RUN rm -rf src;
+RUN rm -rf src
 
 FROM deps AS build
+WORKDIR /app
 COPY .git .git
 COPY src src
+COPY build.rs build.rs
 RUN touch src/main.rs
+RUN touch build.rs
 RUN cargo build --release
 
 FROM rust:1.85.0-slim-bookworm AS run
