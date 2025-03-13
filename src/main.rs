@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
@@ -501,6 +499,7 @@ async fn main() -> anyhow::Result<()> {
                 commands::status::status(),
                 commands::role::role(),
                 commands::fluff::squartatrice(),
+                commands::fluff::itl(),
                 commands::manga::manga(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
