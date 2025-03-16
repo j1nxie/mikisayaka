@@ -252,6 +252,11 @@ async fn event_handler(
                             .collect::<Vec<String>>()
                             .join(", ");
 
+                        let tags = match manga.content_rating {
+                            Some(content_rating) => format!("**{}**, {}", content_rating, tags),
+                            None => tags,
+                        };
+
                         let statistics = data
                         .md
                         .as_ref()
@@ -337,27 +342,13 @@ async fn event_handler(
                                             true,
                                         )
                                         .field(
-                                            "demographic",
-                                            match manga.publication_demographic {
-                                                Some(demographic) => demographic.to_string(),
-                                                None => "unknown".to_string(),
-                                            },
-                                            true,
-                                        )
-                                        .field(
-                                            "rating",
+                                            "statistics",
                                             match statistics.rating.bayesian {
-                                                Some(avg) => format!("{:.02}", avg),
-                                                None => "unknown".to_string(),
-                                            },
-                                            true,
-                                        )
-                                        .field("follows", statistics.follows.to_string(), true)
-                                        .field(
-                                            "content rating",
-                                            match manga.content_rating {
-                                                Some(content_rating) => content_rating.to_string(),
-                                                None => "unknown".to_string(),
+                                                Some(avg) => format!(
+                                                    "{} follows, {:.02} ☆",
+                                                    statistics.follows, avg
+                                                ),
+                                                None => statistics.follows.to_string(),
                                             },
                                             true,
                                         )
