@@ -489,7 +489,7 @@ async fn main() -> anyhow::Result<()> {
                 commands::help::help(),
                 commands::status::status(),
                 commands::role::role(),
-                commands::fluff::squartatrice(),
+                commands::fluff::quartatrice(),
                 commands::fluff::itl(),
                 commands::manga::manga(),
             ],

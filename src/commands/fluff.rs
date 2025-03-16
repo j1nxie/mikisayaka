@@ -7,7 +7,7 @@ use crate::{Context, Error};
 /// you want to listen to squartatrice? here you go.
 #[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
-pub async fn squartatrice(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn quartatrice(ctx: Context<'_>) -> Result<(), Error> {
     let random_number = rand::random::<u8>();
 
     let content = if random_number > 127 {
