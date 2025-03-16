@@ -183,7 +183,7 @@ async fn event_handler(
             }
         }
 
-        if new_message.channel_id == data.music_channel_id.unwrap() {
+        if new_message.channel_id == data.manga_update_channel_id.unwrap() {
             if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content) {
                 let uuid = uuid::Uuid::try_parse(&captures[1]);
 
