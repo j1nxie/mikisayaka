@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id,\n                manga_dex_id AS \"manga_dex_id: uuid::fmt::Hyphenated\",\n                last_updated,\n                last_chapter_date\n            FROM manga;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "manga_dex_id: uuid::fmt::Hyphenated",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_updated",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "last_chapter_date",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "c9b47fc24c3fa73e6ffd47e238dd09fe6fd62a20bc03c36648fa3bba00f28aef"
+}

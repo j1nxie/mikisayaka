@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
@@ -7,7 +9,10 @@ use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateActionRow, CreateAllowedMentions, CreateButton, CreateEmbed,
     CreateMessage, EditMessage, EmojiId, MessageReference,
 };
-use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+    Pool, Sqlite,
+};
 use tracing::{level_filters::LevelFilter, Instrument};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -391,9 +396,12 @@ async fn main() -> anyhow::Result<()> {
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     tracing::info!("initializing database connection...");
+    let opts = SqliteConnectOptions::from_str(&db_url)
+        .expect("invalid DATABASE_URL")
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
     let db = SqlitePoolOptions::new()
         .max_connections(20)
-        .connect(&db_url)
+        .connect_with(opts)
         .await?;
 
     tracing::info!("running migrations...");
