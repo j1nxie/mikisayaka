@@ -494,7 +494,7 @@ async fn main() -> anyhow::Result<()> {
                 commands::manga::manga(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
-                prefix: Some("t>".into()),
+                prefix: Some("s>".into()),
                 ..Default::default()
             },
             event_handler: |ctx, event, framework, data| {
