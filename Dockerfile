@@ -15,6 +15,7 @@ WORKDIR /app
 COPY .git .git
 COPY src src
 COPY build.rs build.rs
+COPY .sqlx .sqlx
 RUN touch src/main.rs
 RUN touch build.rs
 RUN cargo build --release
