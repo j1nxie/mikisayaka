@@ -1,12 +1,23 @@
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
-use crate::{constants::MD_BLOCKED_LIST, models::manga, Data, Error};
+use crate::{constants::MD_BLOCKED_LIST, models::manga::Manga, Data, Error};
 
 #[tracing::instrument(skip_all)]
 pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
-    let manga_list = manga::Entity::find().all(&data.db).await?;
+    let manga_list = sqlx::query_as!(
+        Manga,
+        r#"
+            SELECT
+                id,
+                manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+                last_updated,
+                last_chapter_date
+            FROM manga;
+        "#
+    )
+    .fetch_all(&data.db)
+    .await?;
 
     let mut chapter_list: Vec<CreateEmbed> = vec![];
 
@@ -18,7 +29,7 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
             .as_ref()
             .unwrap()
             .manga()
-            .id(uuid)
+            .id(uuid.into())
             .get()
             .send()
             .await
@@ -53,12 +64,12 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
             .as_ref()
             .unwrap()
             .manga()
-            .id(db_manga.manga_dex_id)
+            .id(db_manga.manga_dex_id.into())
             .feed()
             .get()
             .add_translated_language(&mangadex_api_types_rust::Language::English)
             .publish_at_since(mangadex_api_types_rust::MangaDexDateTime::new(
-                &db_manga.last_updated.assume_utc(),
+                &db_manga.last_updated,
             ))
             .order(MangaFeedSortOrder::Chapter(
                 mangadex_api_types_rust::OrderDirection::Descending,
@@ -75,7 +86,7 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
             }
         };
 
-        let mut db_manga_insert = db_manga.into_active_model();
+        let mut db_manga_insert = db_manga;
         let now = time::OffsetDateTime::now_utc();
 
         if chapter_feed.result == mangadex_api_types_rust::ResultType::Ok
@@ -106,11 +117,10 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
                         ));
 
                     if let Some(timestamp) = chapter_data.publish_at {
-                        db_manga_insert.last_chapter_date =
-                            Set(Some(time::PrimitiveDateTime::new(
-                                timestamp.as_ref().date(),
-                                timestamp.as_ref().time(),
-                            )));
+                        db_manga_insert.last_chapter_date = Some(time::OffsetDateTime::new_utc(
+                            timestamp.as_ref().date(),
+                            timestamp.as_ref().time(),
+                        ))
                     }
 
                     chapter_list.push(embed);
@@ -122,12 +132,26 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
             };
         }
 
-        db_manga_insert.last_updated = Set(time::PrimitiveDateTime::new(now.date(), now.time()));
+        db_manga_insert.last_updated = time::OffsetDateTime::new_utc(now.date(), now.time());
 
-        if let Err(e) = db_manga_insert.update(&data.db).await {
-            tracing::error!(err = ?e, uuid = %uuid, "an error occurred when updating manga in database");
-            continue;
-        };
+        sqlx::query!(
+            r#"
+                INSERT INTO
+                    manga (id, manga_dex_id, last_updated, last_chapter_date)
+                VALUES
+                    ($1, $2, $3, $4)
+                ON CONFLICT (manga_dex_id)
+                DO UPDATE SET
+                    last_updated = excluded.last_updated,
+                    last_chapter_date = excluded.last_chapter_date;
+            "#,
+            db_manga_insert.id,
+            db_manga_insert.manga_dex_id,
+            db_manga_insert.last_updated,
+            db_manga_insert.last_chapter_date,
+        )
+        .execute(&data.db)
+        .await?;
     }
 
     if chapter_list.is_empty() {

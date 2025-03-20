@@ -17,21 +17,9 @@ poise = { version = "0.6.1", features = ["cache"] }
 rand = "0.8.5"
 reqwest = "0.12.12"
 rustc_version_runtime = "0.3.0"
-sea-orm = { version = "1.0.1", features = [
-    "macros",
-    "runtime-tokio-rustls",
-    "sqlx-sqlite",
-    "with-time",
-    "with-uuid",
-], default-features = false }
-sea-orm-migration = { version = "1.0.0", features = [
-    "with-time",
-    "sqlx-sqlite",
-    "runtime-tokio-rustls",
-    "with-uuid",
-], default-features = false }
 semver = "1.0.23"
 serde = { version = "1.0.218", features = ["serde_derive"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "tls-rustls-ring-webpki", "macros", "sqlite", "migrate", "uuid", "time"] }
 time = "0.3.36"
 tokio = { version = "1.39.2", features = ["rt-multi-thread", "tracing"] }
 tracing = "0.1.40"

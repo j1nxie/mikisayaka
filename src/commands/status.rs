@@ -3,17 +3,23 @@ use std::time::UNIX_EPOCH;
 use crate::{
     commands::get_bot_avatar,
     constants::{version::get_version, POISE_VERSION, STARTUP_TIME},
-    models::prelude::Manga,
     Context, Error,
 };
 use poise::serenity_prelude as serenity;
-use sea_orm::{EntityTrait, PaginatorTrait};
 
 /// get the bot's status.
 #[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
-    let count = Manga::find().count(&ctx.data().db).await.inspect_err(
+    let count = sqlx::query_scalar!(
+        r#"
+            SELECT COUNT(*) AS count
+            FROM manga;
+        "#
+    )
+    .fetch_one(&ctx.data().db)
+    .await
+    .inspect_err(
         |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
     )?;
 

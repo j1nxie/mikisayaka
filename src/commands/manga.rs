@@ -2,19 +2,18 @@ use std::cmp::Ordering;
 
 use crate::{
     constants::{MD_BLOCKED_LIST, MD_URL_REGEX},
-    models::manga,
+    models::manga::Manga,
     Context, Error,
 };
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{
     self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, EditMessage,
 };
-use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, EntityTrait, QueryFilter, Set};
 
 struct InternalManga {
     title: String,
     id: uuid::Uuid,
-    last_updated: Option<time::PrimitiveDateTime>,
+    last_updated: Option<time::OffsetDateTime>,
 }
 
 /// check mangadex client's availability.
@@ -137,12 +136,22 @@ pub async fn add(
         }
     };
 
-    let manga_list = manga::Entity::find()
-        .all(&ctx.data().db)
-        .await
-        .inspect_err(
-            |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
-        )?;
+    let manga_list = sqlx::query_as!(
+        Manga,
+        r#"
+            SELECT
+                id,
+                manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+                last_updated,
+                last_chapter_date
+            FROM manga;
+        "#
+    )
+    .fetch_all(&ctx.data().db)
+    .await
+    .inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
+    )?;
 
     let mdlist = ctx
         .data()
@@ -213,21 +222,27 @@ pub async fn add(
         }
     };
 
-    if manga::Entity::find()
-        .filter(manga::Column::MangaDexId.eq(uuid))
-        .one(&ctx.data().db)
-        .await
-        .inspect_err(|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga from database"))?
-        .is_some()
-    {
+    let existing_title =  sqlx::query_as!(Manga,
+        r#"
+        SELECT
+            id AS "id!: i64",
+            manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+            last_updated,
+            last_chapter_date
+        FROM manga
+        WHERE manga_dex_id = $1;
+        "#,
+        uuid
+    ).fetch_optional(&ctx.data().db)
+    .await
+    .inspect_err(|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga from database"))?;
+
+    if existing_title.is_some() {
         ctx.send(
             poise::CreateReply::default()
                 .reply(true)
                 .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                .content(format!(
-                    "**{}** is already in the tracking list.",
-                    title
-                )),
+                .content(format!("**{}** is already in the tracking list.", title)),
         )
         .await
         .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
@@ -272,29 +287,29 @@ pub async fn add(
 
         let chapter_data = &chapter.attributes;
 
-        match chapter_data.publish_at {
-            Some(timestamp) => Set(Some(time::PrimitiveDateTime::new(
-                timestamp.as_ref().date(),
-                timestamp.as_ref().time(),
-            ))),
-            _ => NotSet,
-        }
+        chapter_data.publish_at.map(|timestamp| {
+            time::OffsetDateTime::new_utc(timestamp.as_ref().date(), timestamp.as_ref().time())
+        })
     } else {
-        NotSet
+        None
     };
 
     let now = time::OffsetDateTime::now_utc();
+    let last_updated = time::OffsetDateTime::new_utc(now.date(), now.time());
 
-    let model = manga::ActiveModel {
-        manga_dex_id: Set(uuid),
-        last_chapter_date: latest_chapter_date,
-        last_updated: Set(time::PrimitiveDateTime::new(now.date(), now.time())),
-        ..Default::default()
-    };
-
-    model.insert(&ctx.data().db).await.inspect_err(
-        |e| tracing::error!(err = ?e, "an error occurred when inserting manga into database"),
-    )?;
+    sqlx::query!(
+        r#"
+        INSERT INTO
+        manga (manga_dex_id, last_chapter_date, last_updated)
+        VALUES
+        ($1, $2, $3);
+        "#,
+        uuid,
+        latest_chapter_date,
+        last_updated,
+    )
+    .execute(&ctx.data().db)
+    .await?;
 
     let mut builder = ctx
         .data()
@@ -306,7 +321,7 @@ pub async fn add(
         .put();
 
     for manga in manga_list {
-        builder.add_manga_id(manga.manga_dex_id);
+        builder.add_manga_id(manga.manga_dex_id.into_uuid());
     }
 
     let mut resp_string = String::new();
@@ -414,12 +429,22 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
         .await
         .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
-    let manga_list = manga::Entity::find()
-        .all(&ctx.data().db)
-        .await
-        .inspect_err(
-            |e| tracing::error!(err = ?e, "there was an error fetching manga list from database"),
-        )?;
+    let manga_list = sqlx::query_as!(
+        Manga,
+        r#"
+            SELECT
+                id,
+                manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+                last_updated,
+                last_chapter_date
+            FROM manga;
+        "#
+    )
+    .fetch_all(&ctx.data().db)
+    .await
+    .inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
+    )?;
 
     if manga_list.is_empty() {
         msg.edit(
@@ -446,7 +471,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             .as_ref()
             .unwrap()
             .manga()
-            .id(db_manga.manga_dex_id)
+            .id(db_manga.manga_dex_id.into())
             .get()
             .send()
             .await
@@ -474,7 +499,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
         result_list.push(InternalManga {
             title: title.to_string(),
-            id: manga_id,
+            id: manga_id.into(),
             last_updated: db_manga.last_chapter_date,
         });
     }
@@ -504,7 +529,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                         idx + 1 + page * 10,
                         manga.title,
                         manga.id,
-                        timestamp.assume_utc().unix_timestamp(),
+                        timestamp.unix_timestamp(),
                     )
                 }
                 _ => {
@@ -557,8 +582,12 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 serenity_prelude::CreateButton::new(&prev_id)
                     .emoji('◀')
                     .disabled(true),
-                serenity_prelude::CreateButton::new(&next_id).emoji('▶'),
-                serenity_prelude::CreateButton::new(&last_id).emoji('⏭'),
+                serenity_prelude::CreateButton::new(&next_id)
+                    .emoji('▶')
+                    .disabled(current_page == pages.len() - 1),
+                serenity_prelude::CreateButton::new(&last_id)
+                    .emoji('⏭')
+                    .disabled(current_page == pages.len() - 1),
             ])]),
     )
     .await
@@ -679,10 +708,22 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
         .await
         .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
 
-    let manga_list = manga::Entity::find()
-        .all(&ctx.data().db)
-        .await
-        .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when fetching manga list from database"))?;
+    let manga_list = sqlx::query_as!(
+        Manga,
+        r#"
+            SELECT
+                id,
+                manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+                last_updated,
+                last_chapter_date
+            FROM manga;
+        "#
+    )
+    .fetch_all(&ctx.data().db)
+    .await
+    .inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when fetching manga from database"),
+    )?;
 
     let mdlist = ctx
         .data()
@@ -705,7 +746,7 @@ pub async fn sync(ctx: Context<'_>) -> Result<(), Error> {
         .put();
 
     for manga in manga_list {
-        builder.add_manga_id(manga.manga_dex_id);
+        builder.add_manga_id(manga.manga_dex_id.into_uuid());
     }
 
     match builder

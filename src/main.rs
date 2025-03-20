@@ -2,14 +2,12 @@ use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
-use migrator::Migrator;
 use models::songlink::SonglinkResponse;
 use poise::serenity_prelude::{
     self as serenity, ChannelId, CreateActionRow, CreateAllowedMentions, CreateButton, CreateEmbed,
     CreateMessage, EditMessage, EmojiId, MessageReference,
 };
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
-use sea_orm_migration::MigratorTrait;
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 use tracing::{level_filters::LevelFilter, Instrument};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -18,7 +16,7 @@ struct Data {
     manga_update_channel_id: Option<ChannelId>,
     music_channel_id: Option<ChannelId>,
     reqwest_client: reqwest::Client,
-    db: DatabaseConnection,
+    db: Pool<Sqlite>,
     md: Option<MangaDexClient>,
     mdlist_id: Option<uuid::Uuid>,
 }
@@ -29,7 +27,6 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 mod chapter_tracker;
 mod commands;
 mod constants;
-mod migrator;
 mod models;
 
 #[tracing::instrument(skip_all)]
@@ -394,11 +391,14 @@ async fn main() -> anyhow::Result<()> {
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     tracing::info!("initializing database connection...");
-    let db_opts = ConnectOptions::new(db_url)
-        .sqlx_logging_level(tracing::log::LevelFilter::Debug)
-        .to_owned();
-    let db = Database::connect(db_opts).await?;
-    Migrator::up(&db, None).await?;
+    let db = SqlitePoolOptions::new()
+        .max_connections(20)
+        .connect(&db_url)
+        .await?;
+
+    tracing::info!("running migrations...");
+    sqlx::migrate!("./migrations").run(&db).await?;
+    tracing::info!("finished running migrations!");
 
     tracing::info!("initializing mangadex client...");
 
@@ -494,7 +494,7 @@ async fn main() -> anyhow::Result<()> {
                 commands::manga::manga(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
-                prefix: Some("s>".into()),
+                prefix: Some("t>".into()),
                 ..Default::default()
             },
             event_handler: |ctx, event, framework, data| {
