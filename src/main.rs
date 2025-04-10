@@ -470,14 +470,17 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .and_then(|id| id.parse::<u64>().ok())
         .map(|id| {
-            tracing::info!("watching channel with id {} for youtube links.", id);
+            tracing::info!(
+                "watching channel with id {} for youtube / spotify links.",
+                id
+            );
             ChannelId::new(id)
         });
 
     let reqwest_client = reqwest::Client::new();
 
     if music_channel_id.is_none() {
-        tracing::warn!("no music channel id found. youtube links will not be watched.");
+        tracing::warn!("no music channel id found. youtube / spotify links will not be watched.");
     }
 
     let data = Data {

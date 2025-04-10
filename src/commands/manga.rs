@@ -222,15 +222,16 @@ pub async fn add(
         }
     };
 
-    let existing_title =  sqlx::query_as!(Manga,
+    let existing_title =  sqlx::query_as!(
+        Manga,
         r#"
-        SELECT
-            id AS "id!: i64",
-            manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
-            last_updated,
-            last_chapter_date
-        FROM manga
-        WHERE manga_dex_id = $1;
+            SELECT
+                id AS "id!",
+                manga_dex_id AS "manga_dex_id: uuid::fmt::Hyphenated",
+                last_updated,
+                last_chapter_date
+            FROM manga
+            WHERE manga_dex_id = $1;
         "#,
         uuid
     ).fetch_optional(&ctx.data().db)
@@ -299,10 +300,10 @@ pub async fn add(
 
     sqlx::query!(
         r#"
-        INSERT INTO
-        manga (manga_dex_id, last_chapter_date, last_updated)
-        VALUES
-        ($1, $2, $3);
+            INSERT INTO
+                manga (manga_dex_id, last_chapter_date, last_updated)
+            VALUES
+                ($1, $2, $3);
         "#,
         uuid,
         latest_chapter_date,
