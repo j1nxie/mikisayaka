@@ -106,7 +106,21 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 );
 
                 gas_embed = gas_embed
-                    .field(new_gas.gas_name, gas_price_string, false)
+                    .field(
+                        if zone1_diff < 0 {
+                            format!(
+                                "<a:ARROW_IS_DOWN_ANIM:1360156568137502771> {}",
+                                new_gas.gas_name
+                            )
+                        } else {
+                            format!(
+                                "<a:ARROW_IS_UP_ANIM:1360156587611783219> {}",
+                                new_gas.gas_name
+                            )
+                        },
+                        gas_price_string,
+                        false,
+                    )
                     .timestamp(
                         new_gas
                             .last_modified
