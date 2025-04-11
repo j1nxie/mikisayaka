@@ -22,7 +22,7 @@ serde = { version = "1.0.218", features = ["serde_derive"] }
 sqlx = { version = "0.8.3", features = ["runtime-tokio", "tls-rustls-ring-webpki", "macros", "sqlite", "migrate", "uuid", "time"] }
 thousands = "0.2.0"
 time = { version = "0.3.36", features = ["formatting", "serde"] }
-tokio = { version = "1.39.2", features = ["rt-multi-thread", "tracing"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "tracing"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 urlencoding = "2.1.3"
