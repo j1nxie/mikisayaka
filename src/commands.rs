@@ -1,6 +1,7 @@
 use crate::Context;
 
 pub mod fluff;
+pub mod gas_prices;
 pub mod help;
 pub mod manga;
 pub mod role;

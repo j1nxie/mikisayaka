@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    constants::{MD_BLOCKED_LIST, MD_URL_REGEX},
+    constants::manga::{MD_BLOCKED_LIST, MD_URL_REGEX},
     models::manga::Manga,
     Context, Error,
 };

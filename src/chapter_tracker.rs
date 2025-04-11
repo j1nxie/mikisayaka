@@ -1,7 +1,7 @@
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http};
 
-use crate::{constants::MD_BLOCKED_LIST, models::manga::Manga, Data, Error};
+use crate::{constants::manga::MD_BLOCKED_LIST, models::manga::Manga, Data, Error};
 
 #[tracing::instrument(skip_all)]
 pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {

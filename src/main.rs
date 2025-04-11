@@ -1,6 +1,10 @@
 use std::str::FromStr;
 
-use constants::{MD_URL_REGEX, SPOTIFY_URL_REGEX, STARTUP_TIME, YOUTUBE_URL_REGEX};
+use constants::{
+    manga::MD_URL_REGEX,
+    music::{SPOTIFY_URL_REGEX, YOUTUBE_URL_REGEX},
+    STARTUP_TIME,
+};
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
@@ -18,6 +22,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 struct Data {
+    gas_prices_channel_id: Option<ChannelId>,
     manga_update_channel_id: Option<ChannelId>,
     music_channel_id: Option<ChannelId>,
     reqwest_client: reqwest::Client,
@@ -32,6 +37,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 mod chapter_tracker;
 mod commands;
 mod constants;
+mod gas_prices;
 mod models;
 
 #[tracing::instrument(skip_all)]
@@ -483,7 +489,20 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("no music channel id found. youtube / spotify links will not be watched.");
     }
 
+    let gas_prices_channel_id = std::env::var("GAS_PRICES_CHANNEL_ID")
+        .ok()
+        .and_then(|id| id.parse::<u64>().ok())
+        .map(|id| {
+            tracing::info!("sending new gas prices updates to channel with id {}.", id);
+            ChannelId::new(id)
+        });
+
+    if gas_prices_channel_id.is_none() {
+        tracing::warn!("no channel id found for gas prices updates. they will not be sent.");
+    }
+
     let data = Data {
+        gas_prices_channel_id,
         manga_update_channel_id,
         music_channel_id,
         reqwest_client,
@@ -492,11 +511,13 @@ async fn main() -> anyhow::Result<()> {
         mdlist_id,
     };
 
-    let data_clone = data.clone();
+    let md_data = data.clone();
+    let gas_data = data.clone();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
+                commands::gas_prices::gas_prices(),
                 commands::help::help(),
                 commands::status::status(),
                 commands::role::role(),
@@ -535,12 +556,13 @@ async fn main() -> anyhow::Result<()> {
         .await
         .unwrap();
 
-    let http = client.http.clone();
+    let md_http = client.http.clone();
+    let gas_http = client.http.clone();
 
     tracing::info!("finished initializing!");
     let bot_handle = tokio::spawn(async move { client.start().await.unwrap() });
 
-    if data_clone.md.is_some() {
+    if md_data.md.is_some() {
         tracing::info!("initialized chapter tracker!");
 
         tokio::spawn(
@@ -548,7 +570,7 @@ async fn main() -> anyhow::Result<()> {
                 let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
                 let task = futures::stream::unfold(interval, |mut interval| async {
                     interval.tick().await;
-                    let _ = chapter_tracker::chapter_tracker(&http, &data_clone).await;
+                    let _ = chapter_tracker::chapter_tracker(&md_http, &md_data).await;
 
                     Some(((), interval))
                 });
@@ -558,6 +580,23 @@ async fn main() -> anyhow::Result<()> {
             .in_current_span(),
         );
     }
+
+    tracing::info!("initialized gas prices tracker!");
+
+    tokio::spawn(
+        async move {
+            let interval = tokio::time::interval(std::time::Duration::from_secs(86400));
+            let task = futures::stream::unfold(interval, |mut interval| async {
+                interval.tick().await;
+
+                let _ = gas_prices::gas_prices(&gas_http, &gas_data).await;
+                Some(((), interval))
+            });
+
+            task.for_each(|_| async {}).await;
+        }
+        .in_current_span(),
+    );
 
     bot_handle.await?;
 
