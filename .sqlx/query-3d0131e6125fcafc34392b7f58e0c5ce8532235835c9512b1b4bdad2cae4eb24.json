@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id AS \"id!: i64\",\n            manga_dex_id AS \"manga_dex_id: uuid::fmt::Hyphenated\",\n            last_updated,\n            last_chapter_date\n        FROM manga\n        WHERE manga_dex_id = $1;\n        ",
+  "query": "\n            SELECT\n                id AS \"id!\",\n                manga_dex_id AS \"manga_dex_id: uuid::fmt::Hyphenated\",\n                last_updated,\n                last_chapter_date\n            FROM manga\n            WHERE manga_dex_id = $1;\n        ",
   "describe": {
     "columns": [
       {
-        "name": "id!: i64",
+        "name": "id!",
         "ordinal": 0,
         "type_info": "Integer"
       },
@@ -34,5 +34,5 @@
       true
     ]
   },
-  "hash": "fb473d8fe347a78d2bc401ff25201c8b3cdd4a0857080591a07b7f21e335f4be"
+  "hash": "3d0131e6125fcafc34392b7f58e0c5ce8532235835c9512b1b4bdad2cae4eb24"
 }

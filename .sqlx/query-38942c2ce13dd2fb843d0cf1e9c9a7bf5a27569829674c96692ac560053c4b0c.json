@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO\n                manga (manga_dex_id, last_chapter_date, last_updated)\n            VALUES\n                ($1, $2, $3);\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "38942c2ce13dd2fb843d0cf1e9c9a7bf5a27569829674c96692ac560053c4b0c"
+}

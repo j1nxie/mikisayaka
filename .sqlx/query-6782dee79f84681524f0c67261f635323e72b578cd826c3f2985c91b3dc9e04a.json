@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                        INSERT INTO\n                            gas_prices (id, gas_name, zone1_price, zone2_price, last_modified)\n                        VALUES\n                            ($1, $2, $3, $4, $5)\n                        ON CONFLICT (id)\n                        DO UPDATE SET\n                            zone1_price = excluded.zone1_price,\n                            zone2_price = excluded.zone2_price,\n                            last_modified = excluded.last_modified;\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "6782dee79f84681524f0c67261f635323e72b578cd826c3f2985c91b3dc9e04a"
+}

@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id AS \"id!: String\",\n                gas_name,\n                zone1_price,\n                zone2_price,\n                last_modified\n            FROM gas_prices;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "gas_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "zone1_price",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "zone2_price",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_modified",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a08a95eebbc25847637a33cb577d8c287599fe62f0353166fe54677faf9a6be6"
+}
