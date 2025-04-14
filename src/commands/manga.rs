@@ -136,6 +136,8 @@ pub async fn add(
         }
     };
 
+    let uuid = uuid.hyphenated();
+
     let manga_list = sqlx::query_as!(
         Manga,
         r#"
@@ -171,7 +173,7 @@ pub async fn add(
         .as_ref()
         .unwrap()
         .manga()
-        .id(uuid)
+        .id(*uuid.as_uuid())
         .get()
         .send()
         .await
@@ -186,7 +188,7 @@ pub async fn add(
         .as_ref()
         .unwrap()
         .manga()
-        .id(uuid)
+        .id(*uuid.as_uuid())
         .feed()
         .get()
         .add_translated_language(&mangadex_api_types_rust::Language::English)
@@ -271,7 +273,7 @@ pub async fn add(
         .unwrap()
         .statistics()
         .manga()
-        .id(uuid)
+        .id(*uuid.as_uuid())
         .get()
         .send()
         .await
@@ -279,7 +281,7 @@ pub async fn add(
             |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
         )?;
 
-    let statistics = statistics.statistics.get(&uuid).unwrap();
+    let statistics = statistics.statistics.get(uuid.as_uuid()).unwrap();
 
     let latest_chapter_date = if chapter_feed.result == mangadex_api_types_rust::ResultType::Ok
         && !chapter_feed.data.is_empty()
@@ -336,7 +338,7 @@ pub async fn add(
         .await?;
 
     let _ = builder
-        .add_manga_id(uuid)
+        .add_manga_id(uuid.as_uuid())
         .version(mdlist.data.attributes.version)
         .build()
         .unwrap()
