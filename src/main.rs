@@ -567,7 +567,7 @@ async fn main() -> anyhow::Result<()> {
 
         tokio::spawn(
             async move {
-                let interval = tokio::time::interval(std::time::Duration::from_secs(7200));
+                let interval = tokio::time::interval(std::time::Duration::from_secs(900));
                 let task = futures::stream::unfold(interval, |mut interval| async {
                     interval.tick().await;
                     let _ = chapter_tracker::chapter_tracker(&md_http, &md_data).await;
@@ -585,7 +585,7 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(
         async move {
-            let interval = tokio::time::interval(std::time::Duration::from_secs(86400));
+            let interval = tokio::time::interval(std::time::Duration::from_secs(900));
             let task = futures::stream::unfold(interval, |mut interval| async {
                 interval.tick().await;
 
