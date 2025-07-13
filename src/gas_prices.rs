@@ -33,7 +33,9 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         .get(GAS_PRICES_ENDPOINT)
         .send()
         .await
-        .unwrap();
+        .inspect_err(
+            |e| tracing::error!(err = ?e, "an error occurred when fetching gas prices from API"),
+        )?;
 
     let resp: GasResponse = resp.json().await.unwrap();
 
