@@ -50,7 +50,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         })
         .collect();
 
-    let mut will_update = true;
+    let mut any_updates = false;
 
     let mut gas_embed = CreateEmbed::default().title("Cập nhật giá xăng");
 
@@ -58,11 +58,10 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         match current_gas {
             Some(current_gas) => {
                 if new_gas.last_modified <= current_gas.last_modified {
-                    will_update = false;
                     continue;
                 }
 
-                will_update = true;
+                any_updates = true;
 
                 sqlx::query!(
                     r#"
@@ -177,7 +176,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         }
     }
 
-    if will_update && data.gas_prices_channel_id.is_some() {
+    if any_updates && data.gas_prices_channel_id.is_some() {
         data.gas_prices_channel_id
             .unwrap()
             .send_message(&http, CreateMessage::new().add_embed(gas_embed))
