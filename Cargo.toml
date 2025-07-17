@@ -1,6 +1,6 @@
 [package]
 name = "mikisayaka"
-version = "2025.4.0"
+version = "2025.7.0"
 edition = "2021"
 build = "build.rs"
 
