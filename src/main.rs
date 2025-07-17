@@ -17,8 +17,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     Pool, Sqlite,
 };
-use tracing::{level_filters::LevelFilter, Instrument};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::Instrument;
 
 #[derive(Clone)]
 struct Data {
@@ -39,6 +38,7 @@ mod commands;
 mod constants;
 mod gas_prices;
 mod models;
+mod telemetry;
 
 #[tracing::instrument(skip_all)]
 async fn event_handler(
@@ -386,14 +386,8 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
     let _ = &*STARTUP_TIME;
 
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Initialize OpenTelemetry tracing
+    telemetry::init_telemetry().expect("Failed to initialize OpenTelemetry");
 
     tracing::info!("initializing... please wait warmly.");
     let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
