@@ -1,28 +1,17 @@
-FROM rust:1.85.0-slim-bookworm AS base
-RUN apt update && apt install -y build-essential pkg-config libssl-dev git
-
-FROM base AS deps
+FROM beerpsi/cargo-chef-musl-mimalloc:latest AS chef
 WORKDIR /app
-COPY Cargo.toml Cargo.toml
-COPY Cargo.lock Cargo.lock
-RUN mkdir src; echo 'fn main() {}' > src/main.rs
-RUN echo 'pub fn main() {}' > build.rs
-RUN cargo install --locked --path .
-RUN rm -rf src
 
-FROM deps AS build
-WORKDIR /app
-COPY .git .git
-COPY .sqlx .sqlx
-COPY migrations migrations
-COPY src src
-COPY build.rs build.rs
-RUN touch src/main.rs
-RUN touch build.rs
-RUN cargo build --release
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-FROM rust:1.85.0-slim-bookworm AS run
-RUN apt update && apt install -y libssl3 ca-certificates
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --target x86_64-unknown-linux-musl
+
+FROM gcr.io/distroless/static AS runtime
 WORKDIR /app
-COPY --from=build /app/target/release/mikisayaka .
-CMD [ "/app/mikisayaka" ]
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/mikisayaka /app/
+CMD ["/app/mikisayaka"]

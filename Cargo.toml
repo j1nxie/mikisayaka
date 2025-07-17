@@ -10,15 +10,17 @@ chrono = "0.4.38"
 dotenvy = "0.15.7"
 fancy-regex = "0.14.0"
 futures = "0.3.31"
-mangadex-api = { version = "3.4.1", features = [
-    "multi-thread",
-    "tokio-multi-thread",
-] }
-mangadex-api-schema-rust = "0.10.0"
-mangadex-api-types-rust = "0.10.0"
+mangadex-api = { git = "https://github.com/j1nxie/mangadex-api" }
+mangadex-api-schema-rust = { git = "https://github.com/j1nxie/mangadex-api" }
+mangadex-api-types-rust = { git = "https://github.com/j1nxie/mangadex-api" }
 poise = { version = "0.6.1", features = ["cache"] }
 rand = "0.8.5"
-reqwest = "0.12.12"
+reqwest = { version = "0.12", default-features = false, features = [
+    "http2",
+    "rustls-tls-webpki-roots",
+    "charset",
+    "system-proxy",
+] }
 rustc_version_runtime = "0.3.0"
 semver = "1.0.23"
 serde = { version = "1.0.218", features = ["serde_derive"] }
@@ -38,12 +40,13 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-opentelemetry = "0.31.0"
 opentelemetry = "0.30.0"
-opentelemetry-otlp = { version = "0.30.0", features = [
+opentelemetry-otlp = { version = "0.30.0", default-features = false, features = [
     "tokio",
     "grpc-tonic",
     "trace",
     "metrics",
-    "logs"
+    "logs",
+    "reqwest-rustls-webpki-roots",
 ] }
 opentelemetry_sdk = { version = "0.30.0", features = ["rt-tokio"] }
 urlencoding = "2.1.3"
