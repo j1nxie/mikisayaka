@@ -3,7 +3,9 @@ services:
         hostname: mikisayaka
         container_name: mikisayaka
         build:
-            dockerfile: Dockerfile
+            context: .
+            args:
+                GIT_SHA: ${GIT_SHA:-unknown}
         volumes:
             - ./database:/app/database:rw
         env_file:

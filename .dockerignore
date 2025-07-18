@@ -1,4 +1,5 @@
 .env
+.env.*
 database/
 Dockerfile
 docker-compose.yml
@@ -6,3 +7,5 @@ docker-compose.yml
 config.alloy
 LICENSE-*
 *.md
+.git
+target/

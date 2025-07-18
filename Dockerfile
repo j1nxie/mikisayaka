@@ -1,6 +1,9 @@
 FROM beerpsi/cargo-chef-musl-mimalloc:latest AS chef
 WORKDIR /app
 
+ARG GIT_SHA=unknown
+ENV VERGEN_GIT_SHA=$GIT_SHA
+
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
