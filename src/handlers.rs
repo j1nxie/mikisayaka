@@ -1,17 +1,40 @@
-use crate::models::songlink::SonglinkResponse;
+use crate::constants::embeds::PIXIV_LEGACY_REGEX;
 use crate::Data;
+use crate::{
+    constants::embeds::{PIXIV_ARTWORK_URL_REGEX, PIXIV_SHORT_URL_REGEX},
+    models::songlink::SonglinkResponse,
+};
+use anyhow::Result;
 use fancy_regex::Captures;
 use poise::serenity_prelude::{
     self as serenity, CreateActionRow, CreateAllowedMentions, CreateButton, CreateEmbed,
     CreateMessage, EditMessage, EmojiId, Message, MessageReference,
 };
 
+async fn send_replacement_and_suppress(
+    ctx: &serenity::Context,
+    message: &Message,
+    replacement_url: String,
+) -> Result<()> {
+    message.reply(&ctx.http, replacement_url).await?;
+    message
+        .channel_id
+        .edit_message(
+            &ctx.http,
+            message.id,
+            EditMessage::new().suppress_embeds(true),
+        )
+        .await?;
+
+    Ok(())
+}
+
 pub async fn youtube_handler(
     ctx: &serenity::Context,
     data: &Data,
     new_message: &Message,
     captures: Captures<'_>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mut msg = new_message
         .channel_id
         .send_message(
@@ -77,7 +100,7 @@ pub async fn spotify_handler(
     data: &Data,
     new_message: &Message,
     captures: Captures<'_>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let mut msg = new_message
         .channel_id
         .send_message(
@@ -143,7 +166,7 @@ pub async fn md_handler(
     data: &Data,
     new_message: &Message,
     captures: Captures<'_>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let uuid = uuid::Uuid::try_parse(&captures[1]);
 
     match uuid {
@@ -319,6 +342,73 @@ pub async fn md_handler(
         _ => {
             return Ok(());
         }
+    }
+
+    Ok(())
+}
+
+pub async fn twitter_handler(
+    ctx: &serenity::Context,
+    new_message: &Message,
+    captures: Captures<'_>,
+) -> Result<()> {
+    let username = &captures[2];
+    let status_id = &captures[3];
+
+    let replacement_url = format!("https://fixupx.com/{username}/status/{status_id}");
+
+    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+}
+
+pub async fn tiktok_handler(
+    ctx: &serenity::Context,
+    new_message: &Message,
+    captures: Captures<'_>,
+) -> Result<()> {
+    let id = &captures[1];
+
+    let replacement_url = format!("https://vxtiktok.com/{id}");
+
+    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+}
+
+pub async fn pixiv_handler(ctx: &serenity::Context, new_message: &Message) -> Result<()> {
+    if let Ok(Some(captures)) = PIXIV_ARTWORK_URL_REGEX.captures(&new_message.content) {
+        let lang = captures.name("lang").map_or("", |s| s.as_str());
+        let id = captures.name("id").map_or("", |s| s.as_str());
+        let idx = captures.name("idx").map_or("", |s| s.as_str());
+
+        let path = if lang.is_empty() {
+            format!("artworks/{id}")
+        } else {
+            format!("{lang}/artworks/{id}")
+        };
+
+        let path = if !idx.is_empty() {
+            format!("{path}/{idx}")
+        } else {
+            path
+        };
+
+        let replacement_url = format!("https://phixiv.net/{path}");
+
+        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+    }
+
+    if let Ok(Some(captures)) = PIXIV_SHORT_URL_REGEX.captures(&new_message.content) {
+        let id = &captures[1];
+
+        let replacement_url = format!("https://phixiv.net/i/{id}");
+
+        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+    }
+
+    if let Ok(Some(captures)) = PIXIV_LEGACY_REGEX.captures(&new_message.content) {
+        let id = &captures[1];
+
+        let replacement_url = format!("https://phixiv.net/member_illust.php?illust_id={id}");
+
+        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
     }
 
     Ok(())

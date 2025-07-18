@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+pub mod embeds;
 pub mod gas_prices;
 pub mod manga;
 pub mod music;

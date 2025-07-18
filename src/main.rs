@@ -7,7 +7,13 @@ use mangadex_api::MangaDexClient;
 use poise::serenity_prelude::{self as serenity, ChannelId};
 use sqlx::{Pool, Sqlite};
 
-use crate::handlers::{md_handler, spotify_handler, youtube_handler};
+use crate::{
+    constants::embeds::{TIKTOK_URL_REGEX, TWITTER_URL_REGEX},
+    handlers::{
+        md_handler, pixiv_handler, spotify_handler, tiktok_handler, twitter_handler,
+        youtube_handler,
+    },
+};
 
 #[derive(Clone)]
 struct Data {
@@ -63,6 +69,16 @@ async fn event_handler(
                 md_handler(ctx, data, new_message, captures).await?;
             }
         }
+
+        if let Ok(Some(captures)) = TWITTER_URL_REGEX.captures(&new_message.content) {
+            twitter_handler(ctx, new_message, captures).await?;
+        }
+
+        if let Ok(Some(captures)) = TIKTOK_URL_REGEX.captures(&new_message.content) {
+            tiktok_handler(ctx, new_message, captures).await?;
+        }
+
+        pixiv_handler(ctx, new_message).await?;
     }
 
     Ok(())
