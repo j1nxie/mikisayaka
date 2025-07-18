@@ -3,7 +3,7 @@ use std::str::FromStr;
 use futures::StreamExt;
 use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
 use mangadex_api_types_rust::{Password, Username};
-use poise::serenity_prelude::{self as serenity, ChannelId, Client, ClientBuilder};
+use poise::serenity_prelude::{self as serenity, *};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     Pool, Sqlite,
@@ -154,6 +154,7 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
                 commands::fluff::quartatrice(),
                 commands::fluff::itl(),
                 commands::manga::manga(),
+                commands::quote::quote(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),

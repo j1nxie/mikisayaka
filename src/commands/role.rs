@@ -1,10 +1,6 @@
 use std::collections::HashSet;
 
-use poise::serenity_prelude::{
-    ComponentInteractionCollector, ComponentInteractionDataKind, CreateActionRow,
-    CreateAllowedMentions, CreateEmbed, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption, EditMessage, RoleId,
-};
+use poise::serenity_prelude::*;
 
 use crate::{models::roles::Role, Context, Error};
 

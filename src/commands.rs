@@ -4,6 +4,7 @@ pub mod fluff;
 pub mod gas_prices;
 pub mod help;
 pub mod manga;
+pub mod quote;
 pub mod role;
 pub mod status;
 

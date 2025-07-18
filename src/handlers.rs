@@ -6,10 +6,7 @@ use crate::{
 };
 use anyhow::Result;
 use fancy_regex::Captures;
-use poise::serenity_prelude::{
-    self as serenity, CreateActionRow, CreateAllowedMentions, CreateButton, CreateEmbed,
-    CreateMessage, EditMessage, EmojiId, Message, MessageReference,
-};
+use poise::serenity_prelude::{self as serenity, *};
 
 async fn send_replacement_and_suppress(
     ctx: &serenity::Context,
@@ -409,6 +406,55 @@ pub async fn pixiv_handler(ctx: &serenity::Context, new_message: &Message) -> Re
         let replacement_url = format!("https://phixiv.net/member_illust.php?illust_id={id}");
 
         return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+    }
+
+    Ok(())
+}
+
+pub async fn quote_handler(
+    ctx: &serenity::Context,
+    data: &Data,
+    new_message: &Message,
+) -> Result<()> {
+    let title = new_message.content.trim_start_matches("... ");
+    let result = sqlx::query!(
+        r#"
+                SELECT DISTINCT
+                    q.id, q.title, q.content
+                FROM
+                    quotes q
+                LEFT JOIN
+                    quote_aliases qa ON q.id = qa.quote_id
+                WHERE
+                    q.title = $1 OR qa.alias = $1;
+            "#,
+        title,
+    )
+    .fetch_optional(&data.db)
+    .await
+    .inspect_err(|e| {
+        tracing::error!(err = ?e, title = %title, "an error occurred when fetching quote");
+    })?;
+
+    match result {
+        Some(quote) => {
+            new_message
+                .channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::default()
+                        .reference_message(MessageReference::from(new_message))
+                        .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                        .content(quote.content),
+                )
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
+        }
+        None => {
+            tracing::warn!(title = %title, "got quote with title, but it was not found");
+        }
     }
 
     Ok(())

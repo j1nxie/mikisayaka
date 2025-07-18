@@ -4,13 +4,13 @@ use constants::{
     STARTUP_TIME,
 };
 use mangadex_api::MangaDexClient;
-use poise::serenity_prelude::{self as serenity, ChannelId};
+use poise::serenity_prelude::{self as serenity, *};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
     constants::embeds::{TIKTOK_URL_REGEX, TWITTER_URL_REGEX},
     handlers::{
-        md_handler, pixiv_handler, spotify_handler, tiktok_handler, twitter_handler,
+        md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler, twitter_handler,
         youtube_handler,
     },
 };
@@ -76,6 +76,10 @@ async fn event_handler(
 
         if let Ok(Some(captures)) = TIKTOK_URL_REGEX.captures(&new_message.content) {
             tiktok_handler(ctx, new_message, captures).await?;
+        }
+
+        if new_message.content.starts_with("... ") {
+            quote_handler(ctx, data, new_message).await?;
         }
 
         pixiv_handler(ctx, new_message).await?;

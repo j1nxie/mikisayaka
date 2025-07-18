@@ -1,5 +1,5 @@
 use crate::{models::gas_prices::GasPrice, Context, Error};
-use poise::serenity_prelude::{CreateEmbed, Timestamp};
+use poise::serenity_prelude::*;
 use thousands::Separable;
 use time::format_description::well_known;
 

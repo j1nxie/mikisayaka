@@ -1,4 +1,4 @@
-use poise::serenity_prelude::CreateAllowedMentions;
+use poise::serenity_prelude::*;
 
 use crate::{Context, Error};
 

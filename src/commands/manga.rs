@@ -6,9 +6,7 @@ use crate::{
     Context, Error,
 };
 use mangadex_api_types_rust::MangaFeedSortOrder;
-use poise::serenity_prelude::{
-    self, CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, EditMessage,
-};
+use poise::serenity_prelude::*;
 
 struct InternalManga {
     title: String,
@@ -578,17 +576,13 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                         pages.len(),
                     ))),
             )
-            .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
-                serenity_prelude::CreateButton::new(&first_id)
-                    .emoji('⏮')
-                    .disabled(true),
-                serenity_prelude::CreateButton::new(&prev_id)
-                    .emoji('◀')
-                    .disabled(true),
-                serenity_prelude::CreateButton::new(&next_id)
+            .components(vec![CreateActionRow::Buttons(vec![
+                CreateButton::new(&first_id).emoji('⏮').disabled(true),
+                CreateButton::new(&prev_id).emoji('◀').disabled(true),
+                CreateButton::new(&next_id)
                     .emoji('▶')
                     .disabled(current_page == pages.len() - 1),
-                serenity_prelude::CreateButton::new(&last_id)
+                CreateButton::new(&last_id)
                     .emoji('⏭')
                     .disabled(current_page == pages.len() - 1),
             ])]),
@@ -596,7 +590,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     .await
     .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
 
-    while let Some(press) = serenity_prelude::collector::ComponentInteractionCollector::new(ctx)
+    while let Some(press) = collector::ComponentInteractionCollector::new(ctx)
         .filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
         .timeout(std::time::Duration::from_secs(60))
         .await
@@ -605,8 +599,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
             press
                 .create_response(
                     ctx,
-                    serenity_prelude::CreateInteractionResponse::Message(
-                        serenity_prelude::CreateInteractionResponseMessage::new()
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new()
                             .content("you cannot interact with another user's invoked command!")
                             .ephemeral(true),
                     ),
@@ -634,8 +628,8 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
         press
             .create_response(
                 ctx,
-                serenity_prelude::CreateInteractionResponse::UpdateMessage(
-                    serenity_prelude::CreateInteractionResponseMessage::new()
+                CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new()
                         .embed(
                             CreateEmbed::default()
                                 .title("list of tracked manga titles")
@@ -650,17 +644,17 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                                     pages.len(),
                                 ))),
                         )
-                        .components(vec![serenity_prelude::CreateActionRow::Buttons(vec![
-                            serenity_prelude::CreateButton::new(&first_id)
+                        .components(vec![CreateActionRow::Buttons(vec![
+                            CreateButton::new(&first_id)
                                 .emoji('⏮')
                                 .disabled(current_page == 0),
-                            serenity_prelude::CreateButton::new(&prev_id)
+                            CreateButton::new(&prev_id)
                                 .emoji('◀')
                                 .disabled(current_page == 0),
-                            serenity_prelude::CreateButton::new(&next_id)
+                            CreateButton::new(&next_id)
                                 .emoji('▶')
                                 .disabled(current_page == pages.len() - 1),
-                            serenity_prelude::CreateButton::new(&last_id)
+                            CreateButton::new(&last_id)
                                 .emoji('⏭')
                                 .disabled(current_page == pages.len() - 1),
                         ])]),
