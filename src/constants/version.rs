@@ -17,13 +17,14 @@ const MADOKA_MAGICA: [&str; 12] = [
 
 pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
+    let mut git_sha = env!("VERGEN_GIT_SHA").to_string();
+
+    git_sha.truncate(7);
 
     if let Ok(semver) = semver {
         format!(
             "v{} - {} [[`{2}`](https://github.com/j1nxie/mikisayaka/commit/{2})]",
-            semver,
-            MADOKA_MAGICA[6],
-            env!("VERGEN_GIT_SHA"),
+            semver, MADOKA_MAGICA[6], git_sha,
         )
     } else {
         tracing::warn!("couldn't parse a semver out of Cargo.toml? defaulting to 0.0.0-unknown.");
