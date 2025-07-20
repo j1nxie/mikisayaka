@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT DISTINCT\n                    q.id, q.title, q.content\n                FROM\n                    quotes q\n                LEFT JOIN\n                    quote_aliases qa ON q.id = qa.quote_id\n                WHERE\n                    q.title = $1 OR qa.alias = $1;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6ca85468b541fb26b0b1c7b9fccdb75d79028a0be5f44500858d791edbf7ad6e"
+}

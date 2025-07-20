@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    DELETE FROM quotes\n                    WHERE title = $1;\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "bf2afbbe01c604c10f396a7e7d8107eb1629d1649ac65e1007b287fd806df3a5"
+}

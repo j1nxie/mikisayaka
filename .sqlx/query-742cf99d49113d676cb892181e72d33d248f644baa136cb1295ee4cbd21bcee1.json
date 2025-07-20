@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                q.id AS \"id!\",\n                q.title,\n                q.content,\n                GROUP_CONCAT(qa.alias, ', ') as aliases\n            FROM quotes q\n            LEFT JOIN quote_aliases qa ON q.id = qa.quote_id\n            GROUP BY q.id, q.title, q.content\n            ORDER BY q.id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "aliases",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "742cf99d49113d676cb892181e72d33d248f644baa136cb1295ee4cbd21bcee1"
+}
