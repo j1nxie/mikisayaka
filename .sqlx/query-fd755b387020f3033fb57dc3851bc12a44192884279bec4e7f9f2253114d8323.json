@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id as \"id!\"\n            FROM\n                quotes\n            WHERE\n                title = $1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "fd755b387020f3033fb57dc3851bc12a44192884279bec4e7f9f2253114d8323"
+}

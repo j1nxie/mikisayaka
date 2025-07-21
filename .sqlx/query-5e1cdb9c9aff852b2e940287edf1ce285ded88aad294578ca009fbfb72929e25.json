@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    INSERT INTO\n                        quote_aliases (quote_id, alias)\n                    VALUES\n                        ($1, $2);\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "5e1cdb9c9aff852b2e940287edf1ce285ded88aad294578ca009fbfb72929e25"
+}

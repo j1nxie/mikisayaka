@@ -9,6 +9,7 @@ on:
       - ".dockerignore"
       - "Dockerfile"
       - ".github/workflows/docker-image.yml"
+      - ".sqlx"
     branches:
       - "main"
     tags:
