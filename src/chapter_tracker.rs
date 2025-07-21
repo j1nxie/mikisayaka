@@ -159,6 +159,8 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
     }
 
     if chapter_list.is_empty() {
+        tracing::info!("finished checking for new chapters!");
+
         return Ok(());
     }
 
