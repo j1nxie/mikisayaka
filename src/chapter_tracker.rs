@@ -5,6 +5,8 @@ use crate::{constants::manga::MD_BLOCKED_LIST, models::manga::Manga, Data, Error
 
 #[tracing::instrument(skip_all)]
 pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
+    tracing::info!("started checking for new chapters!");
+
     let manga_list = sqlx::query_as!(
         Manga,
         r#"
@@ -98,6 +100,8 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
 
             match &chapter_data.chapter {
                 Some(chap) => {
+                    tracing::info!(uuid = %uuid, "got chapter for manga");
+
                     let mut vol_chap_str = match &chapter_data.volume {
                         Some(vol) => format!("Vol. {}, Ch. {}", vol, chap),
                         None => format!("Ch. {}", chap),
@@ -173,8 +177,11 @@ pub async fn chapter_tracker(http: &Http, data: &Data) -> Result<(), Error> {
                     })
                     .embeds(chunk.to_vec()),
             )
-            .await?;
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
     }
+
+    tracing::info!("finished checking for new chapters!");
 
     Ok(())
 }

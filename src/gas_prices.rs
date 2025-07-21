@@ -10,6 +10,8 @@ use crate::{
 
 #[tracing::instrument(skip_all)]
 pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
+    tracing::info!("started checking for new gas prices!");
+
     let current_data = sqlx::query_as!(
         GasPrice,
         r#"
@@ -60,6 +62,8 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 if new_gas.last_modified <= current_gas.last_modified {
                     continue;
                 }
+
+                tracing::info!(id = %new_gas.id, gas_name = %new_gas.gas_name, "got new price update for gas");
 
                 any_updates = true;
 
@@ -132,6 +136,8 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                     );
             }
             None => {
+                tracing::info!(id = %new_gas.id, gas_name = %new_gas.gas_name, "got new price update for gas");
+
                 sqlx::query!(
                     r#"
                         INSERT INTO
@@ -183,6 +189,8 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
             .await
             .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending message"))?;
     }
+
+    tracing::info!("finished checking for new gas prices!");
 
     Ok(())
 }
