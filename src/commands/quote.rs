@@ -6,10 +6,10 @@ use crate::{models::quotes::Quote, Context, Error};
     prefix_command,
     guild_only,
     aliases("quotes"),
-    subcommands("add", "list", "delete")
+    subcommands("add_quote", "list_quotes", "delete_quote", "alias")
 )]
 #[tracing::instrument(skip_all)]
-pub async fn quote(ctx: Context<'_>, title: Option<String>) -> Result<(), Error> {
+pub async fn quote(ctx: Context<'_>, #[rest] title: Option<String>) -> Result<(), Error> {
     if let Some(title) = title {
         let result = sqlx::query!(
             r#"
@@ -54,9 +54,13 @@ pub async fn quote(ctx: Context<'_>, title: Option<String>) -> Result<(), Error>
     Ok(())
 }
 
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, rename = "add")]
 #[tracing::instrument(skip_all, fields(title = %title, content = %content))]
-pub async fn add(ctx: Context<'_>, title: String, content: String) -> Result<(), Error> {
+pub async fn add_quote(
+    ctx: Context<'_>,
+    title: String,
+    #[rest] content: String,
+) -> Result<(), Error> {
     let result = sqlx::query!(
         r#"
             INSERT INTO
@@ -93,9 +97,9 @@ pub async fn add(ctx: Context<'_>, title: String, content: String) -> Result<(),
     Ok(())
 }
 
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, rename = "list")]
 #[tracing::instrument(skip_all)]
-pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn list_quotes(ctx: Context<'_>) -> Result<(), Error> {
     let msg = ctx
         .send(
             poise::CreateReply::default()
@@ -298,9 +302,9 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, rename = "delete")]
 #[tracing::instrument(skip_all, fields(title = %title))]
-pub async fn delete(ctx: Context<'_>, title: String) -> Result<(), Error> {
+pub async fn delete_quote(ctx: Context<'_>, #[rest] title: String) -> Result<(), Error> {
     let existing_quote = sqlx::query!(
         r#"
             SELECT
@@ -342,6 +346,139 @@ pub async fn delete(ctx: Context<'_>, title: String) -> Result<(), Error> {
         None => {
             ctx.send(
                 poise::CreateReply::default().content(format!("quote \"{title}\" does not exist.")),
+            )
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+        }
+    }
+
+    Ok(())
+}
+
+#[poise::command(
+    prefix_command,
+    subcommand_required,
+    subcommands("add_alias", "delete_alias")
+)]
+#[tracing::instrument(skip_all)]
+pub async fn alias(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(prefix_command, rename = "add")]
+#[tracing::instrument(skip_all)]
+pub async fn add_alias(ctx: Context<'_>, quote: String, alias: String) -> Result<(), Error> {
+    let existing_quote = sqlx::query!(
+        r#"
+            SELECT
+                id as "id!"
+            FROM
+                quotes
+            WHERE
+                title = $1;
+        "#,
+        quote
+    )
+    .fetch_optional(&ctx.data().db)
+    .await
+    .inspect_err(|e| {
+        tracing::error!(err = ?e, title = %quote, "an error occurred when fetching quote");
+    })?;
+
+    match existing_quote {
+        Some(q) => {
+            let result = sqlx::query!(
+                r#"
+                    INSERT INTO
+                        quote_aliases (quote_id, alias)
+                    VALUES
+                        ($1, $2);
+                "#,
+                q.id,
+                alias,
+            )
+            .execute(&ctx.data().db)
+            .await
+            .inspect_err(|e| {
+                tracing::error!(err = ?e, title = %quote, alias = %alias, "an error occurred when adding alias for quote");
+            });
+
+            if let Err(e) = result {
+                if e.as_database_error().unwrap().is_unique_violation() {
+                    ctx.send(
+                        poise::CreateReply::default()
+                            .content(format!("alias \"{alias}\" already exists.")),
+                    )
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                    )?;
+                }
+
+                return Ok(());
+            }
+
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("added alias \"{alias}\" for quote \"{quote}\".")),
+            )
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+        }
+        None => {
+            ctx.send(
+                poise::CreateReply::default().content(format!("quote \"{quote}\" does not exist.")),
+            )
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+        }
+    }
+
+    Ok(())
+}
+
+#[poise::command(prefix_command, rename = "delete")]
+#[tracing::instrument(skip_all, fields(alias = %alias))]
+pub async fn delete_alias(ctx: Context<'_>, #[rest] alias: String) -> Result<(), Error> {
+    let existing_alias = sqlx::query!(
+        r#"
+            SELECT
+                id AS "id!"
+            FROM quote_aliases
+            WHERE alias = $1;
+        "#,
+        alias
+    )
+    .fetch_optional(&ctx.data().db)
+    .await
+    .inspect_err(|e| {
+        tracing::error!(err = ?e, alias = %alias, "an error occurred when fetching alias");
+    })?;
+
+    match existing_alias {
+        Some(_) => {
+            sqlx::query!(
+                r#"
+                    DELETE FROM quote_aliases
+                    WHERE alias = $1;
+                "#,
+                alias
+            )
+            .execute(&ctx.data().db)
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, alias = %alias, "an error occurred when deleting alias")
+            )?;
+
+            ctx.send(poise::CreateReply::default().content(format!("deleted alias \"{alias}\".")))
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
+        }
+        None => {
+            ctx.send(
+                poise::CreateReply::default().content(format!("alias \"{alias}\" does not exist.")),
             )
             .await
             .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
