@@ -153,7 +153,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
                 format!("{}. {}", idx + 1 + page * 10, quote.title)
             } else {
                 format!(
-                    "{}. {} ({})",
+                    "{}. {} ({})\n",
                     idx + 1 + page * 10,
                     quote.title,
                     quote.aliases.join(", ")
