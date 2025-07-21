@@ -154,7 +154,7 @@ pub async fn list_quotes(ctx: Context<'_>) -> Result<(), Error> {
 
         for (idx, quote) in chunk.iter().enumerate() {
             let entry_str = if quote.aliases.is_empty() {
-                format!("{}. {}", idx + 1 + page * 10, quote.title)
+                format!("{}. {}\n", idx + 1 + page * 10, quote.title)
             } else {
                 format!(
                     "{}. {} ({})\n",
