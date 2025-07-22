@@ -286,54 +286,57 @@ pub async fn md_handler(
                 )
                 .await?;
 
-            msg.edit(
-                ctx,
-                EditMessage::default()
-                    .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-                    .content("here's your manga!")
-                    .embed(
-                        CreateEmbed::default()
-                            .title(title)
-                            .url(format!("https://mangadex.org/title/{}", manga_id))
-                            .description(
-                                match manga
-                                    .description
-                                    .get(&mangadex_api_types_rust::Language::English)
-                                {
-                                    Some(d) => d,
-                                    None => "",
-                                },
-                            )
-                            .image(format!(
-                                "https://og.mangadex.org/og-image/manga/{}",
-                                manga_id
-                            ))
-                            .field(
-                                "publication",
-                                match manga.year {
-                                    Some(year) => {
-                                        format!("{}, {}", year, manga.status)
-                                    }
-                                    None => manga.status.to_string(),
-                                },
-                                true,
-                            )
-                            .field(
-                                "statistics",
-                                match statistics.rating.bayesian {
-                                    Some(avg) => {
-                                        format!("{} follows, {:.02} ☆", statistics.follows, avg)
-                                    }
-                                    None => statistics.follows.to_string(),
-                                },
-                                true,
-                            )
-                            .field("tags", tags, false),
-                    )
-                    .components(vec![CreateActionRow::Buttons(buttons)]),
-            )
-            .await
-            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when editing message"))?;
+            let edit_msg = EditMessage::default()
+                .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
+                .content("here's your manga!")
+                .embed(
+                    CreateEmbed::default()
+                        .title(title)
+                        .url(format!("https://mangadex.org/title/{}", manga_id))
+                        .description(
+                            match manga
+                                .description
+                                .get(&mangadex_api_types_rust::Language::English)
+                            {
+                                Some(d) => d,
+                                None => "",
+                            },
+                        )
+                        .image(format!(
+                            "https://og.mangadex.org/og-image/manga/{}",
+                            manga_id
+                        ))
+                        .field(
+                            "publication",
+                            match manga.year {
+                                Some(year) => {
+                                    format!("{}, {}", year, manga.status)
+                                }
+                                None => manga.status.to_string(),
+                            },
+                            true,
+                        )
+                        .field(
+                            "statistics",
+                            match statistics.rating.bayesian {
+                                Some(avg) => {
+                                    format!("{} follows, {:.02} ☆", statistics.follows, avg)
+                                }
+                                None => statistics.follows.to_string(),
+                            },
+                            true,
+                        )
+                        .field("tags", tags, false),
+                );
+            let edit_msg = if buttons.len() > 0 {
+                edit_msg.components(vec![CreateActionRow::Buttons(buttons)])
+            } else {
+                edit_msg
+            };
+
+            msg.edit(ctx, edit_msg).await.inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when editing message"),
+            )?;
         }
 
         _ => {
