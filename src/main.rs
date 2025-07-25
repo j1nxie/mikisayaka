@@ -38,7 +38,7 @@ mod init;
 mod models;
 mod telemetry;
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(ctx, _framework, data))]
 async fn event_handler(
     ctx: &serenity::Context,
     event: &serenity::FullEvent,

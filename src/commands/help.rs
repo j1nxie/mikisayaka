@@ -1,8 +1,8 @@
 use crate::{Context, Error};
 
 /// print the list of commands and their usage
+#[tracing::instrument(skip(ctx))]
 #[poise::command(prefix_command)]
-#[tracing::instrument(skip_all)]
 pub async fn help(
     ctx: Context<'_>,
     #[description = "specific command to show help about"] command: Option<String>,

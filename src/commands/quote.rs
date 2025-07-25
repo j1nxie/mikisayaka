@@ -2,13 +2,13 @@ use poise::serenity_prelude::*;
 
 use crate::{models::quotes::Quote, Context, Error};
 
+#[tracing::instrument(skip(ctx))]
 #[poise::command(
     prefix_command,
     guild_only,
     aliases("quotes"),
     subcommands("add_quote", "list_quotes", "delete_quote", "alias")
 )]
-#[tracing::instrument(skip_all)]
 pub async fn quote(ctx: Context<'_>, #[rest] title: Option<String>) -> Result<(), Error> {
     if let Some(title) = title {
         let result = sqlx::query!(
@@ -55,7 +55,7 @@ pub async fn quote(ctx: Context<'_>, #[rest] title: Option<String>) -> Result<()
 }
 
 #[poise::command(prefix_command, rename = "add")]
-#[tracing::instrument(skip_all, fields(title = %title, content = %content))]
+#[tracing::instrument(skip(ctx))]
 pub async fn add_quote(
     ctx: Context<'_>,
     title: String,
@@ -302,8 +302,8 @@ pub async fn list_quotes(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+#[tracing::instrument(skip(ctx))]
 #[poise::command(prefix_command, rename = "delete")]
-#[tracing::instrument(skip_all, fields(title = %title))]
 pub async fn delete_quote(ctx: Context<'_>, #[rest] title: String) -> Result<(), Error> {
     let existing_quote = sqlx::query!(
         r#"
@@ -355,18 +355,18 @@ pub async fn delete_quote(ctx: Context<'_>, #[rest] title: String) -> Result<(),
     Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 #[poise::command(
     prefix_command,
     subcommand_required,
     subcommands("add_alias", "delete_alias")
 )]
-#[tracing::instrument(skip_all)]
 pub async fn alias(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+#[tracing::instrument(skip(ctx))]
 #[poise::command(prefix_command, rename = "add")]
-#[tracing::instrument(skip_all)]
 pub async fn add_alias(ctx: Context<'_>, quote: String, alias: String) -> Result<(), Error> {
     let existing_quote = sqlx::query!(
         r#"
@@ -437,8 +437,8 @@ pub async fn add_alias(ctx: Context<'_>, quote: String, alias: String) -> Result
     Ok(())
 }
 
+#[tracing::instrument(skip(ctx))]
 #[poise::command(prefix_command, rename = "delete")]
-#[tracing::instrument(skip_all, fields(alias = %alias))]
 pub async fn delete_alias(ctx: Context<'_>, #[rest] alias: String) -> Result<(), Error> {
     let existing_alias = sqlx::query!(
         r#"

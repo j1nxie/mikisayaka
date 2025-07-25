@@ -5,20 +5,20 @@ use poise::serenity_prelude::*;
 use crate::{models::roles::Role, Context, Error};
 
 /// commands related to self-assignable roles.
+#[tracing::instrument(skip_all)]
 #[poise::command(
     prefix_command,
     subcommand_required,
     guild_only,
     subcommands("add", "remove")
 )]
-#[tracing::instrument(skip_all)]
 pub async fn role(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 /// add a self-assignable role from list.
-#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
+#[poise::command(prefix_command)]
 pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
     let roles = sqlx::query_as!(
         Role,
@@ -131,8 +131,8 @@ pub async fn add(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// remove a self-assignable role from your role list.
-#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
+#[poise::command(prefix_command)]
 pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
     let roles = sqlx::query_as!(
         Role,

@@ -5,8 +5,8 @@ use crate::{Context, Error};
 /// あたしって、ほんとばか。
 ///
 /// you want to listen to squartatrice? here you go.
-#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
+#[poise::command(prefix_command)]
 pub async fn quartatrice(ctx: Context<'_>) -> Result<(), Error> {
     let random_number = rand::random::<u8>();
 
@@ -29,8 +29,8 @@ pub async fn quartatrice(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// do not play this with 0.7 slide delay.
-#[poise::command(prefix_command)]
 #[tracing::instrument(skip_all)]
+#[poise::command(prefix_command)]
 pub async fn itl(ctx: Context<'_>) -> Result<(), Error> {
     let random_number = rand::random::<u8>();
 

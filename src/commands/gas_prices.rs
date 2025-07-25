@@ -4,8 +4,8 @@ use thousands::Separable;
 use time::format_description::well_known;
 
 /// get the current gas prices.
-#[poise::command(prefix_command, rename = "gasprices", aliases("gas"))]
 #[tracing::instrument(skip_all)]
+#[poise::command(prefix_command, rename = "gasprices", aliases("gas"))]
 pub async fn gas_prices(ctx: Context<'_>) -> Result<(), Error> {
     let current_data = sqlx::query_as!(
         GasPrice,
