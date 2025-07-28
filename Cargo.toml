@@ -34,7 +34,12 @@ sqlx = { version = "0.8.3", features = [
     "time",
 ] }
 thousands = "0.2.0"
-time = { version = "0.3.36", features = ["formatting", "serde"] }
+time = { version = "0.3.36", features = [
+    "formatting",
+    "serde",
+    "local-offset",
+    "macros",
+] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "tracing"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

@@ -1,9 +1,9 @@
 use crate::{
-    models::zenless::{HoyolabAccount, ZenlessResponse, ZenlessReturnCode},
+    models::zenless::{HoyolabAccount, ZenlessReturnCode},
     Context, Error,
 };
 use fancy_regex::Regex;
-use poise::serenity_prelude as serenity;
+use time::{OffsetDateTime, UtcOffset};
 
 fn get_cookie_value(cookie: &str, cookie_name: &str) -> Option<String> {
     let regex = Regex::new(&format!(r"(^| ){cookie_name}=([^;]+)")).unwrap();
@@ -61,7 +61,7 @@ pub async fn add(ctx: Context<'_>, #[rest] cookie: String) -> Result<(), Error> 
 }
 
 #[tracing::instrument(skip_all)]
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, broadcast_typing)]
 pub async fn daily(ctx: Context<'_>) -> Result<(), Error> {
     let id = &ctx.author().id.to_string();
     let account = sqlx::query_as!(
@@ -84,23 +84,50 @@ pub async fn daily(ctx: Context<'_>) -> Result<(), Error> {
 
     match account {
         Some(account) => {
-            let resp = ctx
+            let daily_resp = ctx
                 .data()
                 .zenless_client
-                .daily_sign_in(account.hoyolab_token)
+                .claim_daily_reward(&account.hoyolab_token)
                 .await?;
 
-            match resp {
-                ZenlessResponse::Success(_t) => {
-                    ctx.reply("successfully checked in for today!~")
-                        .await
-                        .inspect_err(
-                            |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
-                        )?;
+            let status_resp = ctx
+                .data()
+                .zenless_client
+                .get_daily_reward_status(&account.hoyolab_token)
+                .await?;
+
+            let offset = UtcOffset::from_hms(8, 0, 0).unwrap();
+            let now = OffsetDateTime::now_utc().to_offset(offset);
+            let month = now.month();
+
+            let days_checked_in_str = format!(
+                "you have checked in for **{}** days during {}!",
+                status_resp.data().unwrap().total_days_signed_in,
+                month,
+            );
+
+            match daily_resp.is_success() {
+                true => {
+                    let resp_str = if status_resp.is_success() {
+                        String::from("successfully checked in for today!~ ") + &days_checked_in_str
+                    } else {
+                        String::from("successfully checked in for today!~")
+                    };
+
+                    ctx.reply(resp_str).await.inspect_err(
+                        |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                    )?;
                 }
-                ZenlessResponse::Failure(e) => {
-                    if e.retcode == ZenlessReturnCode::AlreadyClaimed {
-                        ctx.reply("you are already checked in.").await.inspect_err(
+                false => {
+                    if daily_resp.retcode == ZenlessReturnCode::AlreadyClaimed {
+                        let resp_str = if status_resp.is_success() {
+                            String::from("you have already checked in for today! ")
+                                + &days_checked_in_str
+                        } else {
+                            String::from("you have already checked in for today!")
+                        };
+
+                        ctx.reply(resp_str).await.inspect_err(
                             |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
                         )?;
                     } else {

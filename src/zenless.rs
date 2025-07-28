@@ -5,7 +5,10 @@ use reqwest::header::{
 
 use crate::{
     constants::zenless::{HOYOLAB_API_BASE, USER_AGENT_STR, ZZZ_ACT_ID},
-    models::zenless::ZenlessResponse,
+    models::zenless::{
+        daily::{DailyReward, DailyRewardStatus},
+        HoyolabResponse,
+    },
 };
 
 #[derive(Clone)]
@@ -49,11 +52,66 @@ impl ZenlessClient {
         ZenlessClient { client }
     }
 
-    pub async fn daily_sign_in(&self, cookie: String) -> anyhow::Result<ZenlessResponse> {
+    pub async fn get_monthly_rewards(
+        &self,
+        cookie: &str,
+    ) -> anyhow::Result<HoyolabResponse<Vec<DailyReward>>> {
+        let resp = self
+            .client
+            .get(HOYOLAB_API_BASE.to_owned() + "/event/luna/zzz/os/home")
+            .header(COOKIE, HeaderValue::from_str(cookie)?)
+            .query(&[("lang", "en-us"), ("act_id", ZZZ_ACT_ID)])
+            .send()
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when sending daily request"),
+            )?;
+
+        let text = resp.text().await.inspect_err(
+            |e| tracing::error!(err = ?e, "an error occurred when receiving response text"),
+        )?;
+
+        let body = serde_json::from_str(&text).inspect_err(
+            |e| tracing::error!(err = ?e, text = %text, "an error occurred when parsing response body"),
+        )?;
+
+        Ok(body)
+    }
+
+    pub async fn get_daily_reward_status(
+        &self,
+        cookie: &str,
+    ) -> anyhow::Result<HoyolabResponse<DailyRewardStatus>> {
+        let resp = self
+            .client
+            .get(HOYOLAB_API_BASE.to_owned() + "/event/luna/zzz/os/info")
+            .header(COOKIE, HeaderValue::from_str(cookie)?)
+            .query(&[("lang", "en-us"), ("act_id", ZZZ_ACT_ID)])
+            .send()
+            .await
+            .inspect_err(
+                |e| tracing::error!(err = ?e, "an error occurred when sending daily request"),
+            )?;
+
+        let text = resp.text().await.inspect_err(
+            |e| tracing::error!(err = ?e, "an error occurred when receiving response text"),
+        )?;
+
+        let body = serde_json::from_str(&text).inspect_err(
+            |e| tracing::error!(err = ?e, text = %text, "an error occurred when parsing response body"),
+        )?;
+
+        Ok(body)
+    }
+
+    pub async fn claim_daily_reward(
+        &self,
+        cookie: &str,
+    ) -> anyhow::Result<HoyolabResponse<DailyReward>> {
         let resp = self
             .client
             .post(HOYOLAB_API_BASE.to_owned() + "/event/luna/zzz/os/sign")
-            .header(COOKIE, HeaderValue::from_str(&cookie)?)
+            .header(COOKIE, HeaderValue::from_str(cookie)?)
             .query(&[("lang", "en-us"), ("act_id", ZZZ_ACT_ID)])
             .send()
             .await
