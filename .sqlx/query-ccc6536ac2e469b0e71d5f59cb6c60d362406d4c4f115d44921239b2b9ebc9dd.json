@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO\n                    hoyolab_accounts (user_id, hoyolab_token)\n                VALUES\n                    ($1, $2)\n                ON CONFLICT (user_id)\n                DO UPDATE SET\n                    hoyolab_token = excluded.hoyolab_token;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ccc6536ac2e469b0e71d5f59cb6c60d362406d4c4f115d44921239b2b9ebc9dd"
+}

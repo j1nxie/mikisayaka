@@ -13,6 +13,7 @@ use crate::{
         md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler, twitter_handler,
         youtube_handler,
     },
+    zenless::ZenlessClient,
 };
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ struct Data {
     manga_update_channel_id: Option<ChannelId>,
     music_channel_id: Option<ChannelId>,
     reqwest_client: reqwest::Client,
+    zenless_client: ZenlessClient,
     db: Pool<Sqlite>,
     md: Option<MangaDexClient>,
     mdlist_id: Option<uuid::Uuid>,
@@ -37,6 +39,7 @@ mod handlers;
 mod init;
 mod models;
 mod telemetry;
+mod zenless;
 
 #[tracing::instrument(skip(ctx, _framework, data))]
 async fn event_handler(

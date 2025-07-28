@@ -3,3 +3,4 @@ pub mod manga;
 pub mod quotes;
 pub mod roles;
 pub mod songlink;
+pub mod zenless;

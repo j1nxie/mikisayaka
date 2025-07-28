@@ -8,9 +8,12 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     Pool, Sqlite,
 };
+use time::OffsetDateTime;
 use tracing::Instrument;
 
-use crate::{chapter_tracker, commands, event_handler, gas_prices, telemetry, Data};
+use crate::{
+    chapter_tracker, commands, event_handler, gas_prices, telemetry, zenless::ZenlessClient, Data,
+};
 
 async fn init_database() -> anyhow::Result<Pool<Sqlite>> {
     let db_url = std::env::var("DATABASE_URL").expect("missing DATABASE_URL");
@@ -147,6 +150,7 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
+                commands::zenless::zenless(),
                 commands::gas_prices::gas_prices(),
                 commands::help::help(),
                 commands::status::status(),
@@ -244,12 +248,14 @@ pub async fn init() -> anyhow::Result<Client> {
     let mdlist_id = init_mdlist_id();
     let (manga_update_channel_id, music_channel_id, gas_prices_channel_id) = init_channel_ids();
     let reqwest_client = reqwest::Client::new();
+    let zenless_client = ZenlessClient::new();
 
     let data = Data {
         gas_prices_channel_id,
         manga_update_channel_id,
         music_channel_id,
         reqwest_client,
+        zenless_client,
         db,
         md,
         mdlist_id,
