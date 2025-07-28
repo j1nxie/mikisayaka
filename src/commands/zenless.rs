@@ -14,7 +14,12 @@ fn get_cookie_value(cookie: &str, cookie_name: &str) -> Option<String> {
 }
 
 #[tracing::instrument(skip_all)]
-#[poise::command(prefix_command, subcommand_required, subcommands("add", "daily"))]
+#[poise::command(
+    prefix_command,
+    subcommand_required,
+    aliases("zzz"),
+    subcommands("add", "daily")
+)]
 pub async fn zenless(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
