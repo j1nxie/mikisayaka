@@ -328,7 +328,7 @@ pub async fn md_handler(
                         )
                         .field("tags", tags, false),
                 );
-            let edit_msg = if buttons.len() > 0 {
+            let edit_msg = if !buttons.is_empty() {
                 edit_msg.components(vec![CreateActionRow::Buttons(buttons)])
             } else {
                 edit_msg
