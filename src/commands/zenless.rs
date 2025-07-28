@@ -47,7 +47,7 @@ pub async fn add(ctx: Context<'_>, #[rest] cookie: String) -> Result<(), Error> 
             |e| tracing::error!(err = ?e, "an error occurred when inserting token to database"),
         )?;
 
-        ctx.send(poise::CreateReply::default().content("added your token to the database!"))
+        ctx.reply("added your token to the database!")
             .await
             .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
     }
@@ -87,29 +87,19 @@ pub async fn daily(ctx: Context<'_>) -> Result<(), Error> {
 
             match resp {
                 ZenlessResponse::Success(_t) => {
-                    ctx.send(
-                        poise::CreateReply::default()
-                            .content("successfully checked in for today!~"),
-                    )
-                    .await
-                    .inspect_err(
-                        |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
-                    )?;
-                }
-                ZenlessResponse::Failure(e) => {
-                    if e.retcode == ZenlessReturnCode::AlreadyClaimed {
-                        ctx.send(
-                            poise::CreateReply::default().content("you are already checked in."),
-                        )
+                    ctx.reply("successfully checked in for today!~")
                         .await
                         .inspect_err(
                             |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
                         )?;
+                }
+                ZenlessResponse::Failure(e) => {
+                    if e.retcode == ZenlessReturnCode::AlreadyClaimed {
+                        ctx.reply("you are already checked in.").await.inspect_err(
+                            |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                        )?;
                     } else {
-                        ctx.send(
-                            poise::CreateReply::default()
-                                .content("something wrong happened while checking in."),
-                        )
+                        ctx.reply("something wrong happened while checking in.")
                         .await
                         .inspect_err(
                             |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
@@ -119,12 +109,11 @@ pub async fn daily(ctx: Context<'_>) -> Result<(), Error> {
             }
         }
         None => {
-            ctx.send(
-                poise::CreateReply::default()
-                    .content("you don't have a HoYoLab cookie registered."),
-            )
-            .await
-            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+            ctx.reply("you don't have a HoYoLab cookie registered.")
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when sending reply"),
+                )?;
         }
     }
 
