@@ -1,6 +1,7 @@
 use poise::serenity_prelude::*;
 
-use crate::{models::quotes::Quote, Context, Error};
+use crate::models::quotes::Quote;
+use crate::{Context, Error};
 
 #[tracing::instrument(skip(ctx))]
 #[poise::command(

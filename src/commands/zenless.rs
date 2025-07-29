@@ -1,9 +1,8 @@
-use crate::{
-    models::zenless::{HoyolabAccount, ZenlessReturnCode},
-    Context, Error,
-};
 use fancy_regex::Regex;
 use time::{OffsetDateTime, UtcOffset};
+
+use crate::models::zenless::{HoyolabAccount, ZenlessReturnCode};
+use crate::{Context, Error};
 
 fn get_cookie_value(cookie: &str, cookie_name: &str) -> Option<String> {
     let regex = Regex::new(&format!(r"(^| ){cookie_name}=([^;]+)")).unwrap();

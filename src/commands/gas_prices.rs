@@ -1,7 +1,9 @@
-use crate::{models::gas_prices::GasPrice, Context, Error};
 use poise::serenity_prelude::*;
 use thousands::Separable;
 use time::format_description::well_known;
+
+use crate::models::gas_prices::GasPrice;
+use crate::{Context, Error};
 
 /// get the current gas prices.
 #[tracing::instrument(skip_all)]

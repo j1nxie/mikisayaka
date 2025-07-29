@@ -1,12 +1,11 @@
 use std::cmp::Ordering;
 
-use crate::{
-    constants::manga::{MD_BLOCKED_LIST, MD_URL_REGEX},
-    models::manga::Manga,
-    Context, Error,
-};
 use mangadex_api_types_rust::MangaFeedSortOrder;
 use poise::serenity_prelude::*;
+
+use crate::constants::manga::{MD_BLOCKED_LIST, MD_URL_REGEX};
+use crate::models::manga::Manga;
+use crate::{Context, Error};
 
 struct InternalManga {
     title: String,
@@ -344,14 +343,24 @@ pub async fn add(
         .await
         .map_err(|e| {
             tracing::warn!(err = ?e, "an error occurred when updating the mdlist");
-            resp_string = "*failed to update the mdlist. it will (hopefully) be updated the next time you add a manga. you can also try running `s>manga sync` to sync the mdlist.*\n\n".to_string()
+            resp_string = "*failed to update the mdlist. it will (hopefully) be updated the next \
+                           time you add a manga. you can also try running `s>manga sync` to sync \
+                           the mdlist.*\n\n"
+                .to_string()
         });
 
     ctx.send(
         poise::CreateReply::default()
             .reply(true)
             .allowed_mentions(CreateAllowedMentions::new().replied_user(false))
-            .content(resp_string + &format!("added [**{}**](https://mangadex.org/title/{}) to the tracking list! you will be notified when a new chapter is uploaded.", title, uuid))
+            .content(
+                resp_string
+                    + &format!(
+                        "added [**{}**](https://mangadex.org/title/{}) to the tracking list! you \
+                         will be notified when a new chapter is uploaded.",
+                        title, uuid
+                    ),
+            )
             .embed(
                 CreateEmbed::default()
                     .title(title)

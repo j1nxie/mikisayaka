@@ -1,19 +1,17 @@
 use std::str::FromStr;
 
 use futures::StreamExt;
-use mangadex_api::{v5::schema::oauth::ClientInfo, MangaDexClient};
+use mangadex_api::MangaDexClient;
+use mangadex_api::v5::schema::oauth::ClientInfo;
 use mangadex_api_types_rust::{Password, Username};
 use poise::serenity_prelude::{self as serenity, *};
-use sqlx::{
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    Pool, Sqlite,
-};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::{Pool, Sqlite};
 use time::OffsetDateTime;
 use tracing::Instrument;
 
-use crate::{
-    chapter_tracker, commands, event_handler, gas_prices, telemetry, zenless::ZenlessClient, Data,
-};
+use crate::zenless::ZenlessClient;
+use crate::{Data, chapter_tracker, commands, event_handler, gas_prices, telemetry};
 
 async fn init_database() -> anyhow::Result<Pool<Sqlite>> {
     let db_url = std::env::var("DATABASE_URL").expect("missing DATABASE_URL");
@@ -170,13 +168,18 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
-            Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands)
-                    .await
-                    .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when registering commands"))?;
+            Box::pin(
+                async move {
+                    poise::builtins::register_globally(ctx, &framework.options().commands)
+						.await
+						.inspect_err(
+							|e| tracing::error!(err = ?e, "an error occurred when registering commands"),
+						)?;
 
-                Ok(data)
-            }.in_current_span())
+                    Ok(data)
+                }
+                .in_current_span(),
+            )
         })
         .build();
 

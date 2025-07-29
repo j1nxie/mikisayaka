@@ -1,11 +1,11 @@
 use std::time::UNIX_EPOCH;
 
-use crate::{
-    commands::get_bot_avatar,
-    constants::{version::get_version, POISE_VERSION, STARTUP_TIME},
-    Context, Error,
-};
 use poise::serenity_prelude as serenity;
+
+use crate::commands::get_bot_avatar;
+use crate::constants::version::get_version;
+use crate::constants::{POISE_VERSION, STARTUP_TIME};
+use crate::{Context, Error};
 
 /// get the bot's status.
 #[tracing::instrument(skip_all)]

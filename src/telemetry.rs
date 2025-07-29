@@ -1,9 +1,13 @@
-use opentelemetry::{global, trace::TracerProvider, KeyValue};
+use std::env;
+
+use opentelemetry::trace::TracerProvider;
+use opentelemetry::{KeyValue, global};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::Resource;
-use std::env;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Registry};
 
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let otlp_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT")

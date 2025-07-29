@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use poise::serenity_prelude::*;
 
-use crate::{models::roles::Role, Context, Error};
+use crate::models::roles::Role;
+use crate::{Context, Error};
 
 /// commands related to self-assignable roles.
 #[tracing::instrument(skip_all)]
@@ -247,13 +248,17 @@ pub async fn remove(ctx: Context<'_>) -> Result<(), Error> {
                 }
 
                 msg.edit(
-                        ctx,
-                        EditMessage::new()
-                            .content(format!("you don't seem to have the role <@&{}>...? how did you get here to begin with?", roles[0]))
-                            .components(vec![])
-                            .embeds(vec![]),
-                    )
-                    .await?;
+                    ctx,
+                    EditMessage::new()
+                        .content(format!(
+                            "you don't seem to have the role <@&{}>...? how did you get here to \
+                             begin with?",
+                            roles[0]
+                        ))
+                        .components(vec![])
+                        .embeds(vec![]),
+                )
+                .await?;
 
                 tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                 break;

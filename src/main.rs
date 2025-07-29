@@ -1,20 +1,16 @@
-use constants::{
-    manga::MD_URL_REGEX,
-    music::{SPOTIFY_URL_REGEX, YOUTUBE_URL_REGEX},
-    STARTUP_TIME,
-};
+use constants::STARTUP_TIME;
+use constants::manga::MD_URL_REGEX;
+use constants::music::{SPOTIFY_URL_REGEX, YOUTUBE_URL_REGEX};
 use mangadex_api::MangaDexClient;
 use poise::serenity_prelude::{self as serenity, *};
 use sqlx::{Pool, Sqlite};
 
-use crate::{
-    constants::embeds::{TIKTOK_URL_REGEX, TWITTER_URL_REGEX},
-    handlers::{
-        md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler, twitter_handler,
-        youtube_handler,
-    },
-    zenless::ZenlessClient,
+use crate::constants::embeds::{TIKTOK_URL_REGEX, TWITTER_URL_REGEX};
+use crate::handlers::{
+    md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler, twitter_handler,
+    youtube_handler,
 };
+use crate::zenless::ZenlessClient;
 
 #[derive(Clone)]
 struct Data {

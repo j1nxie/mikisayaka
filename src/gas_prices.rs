@@ -2,11 +2,9 @@ use poise::serenity_prelude::*;
 use thousands::Separable;
 use time::format_description::well_known;
 
-use crate::{
-    constants::gas_prices::{GAS_PRICES_ENDPOINT, RELEVANT_GAS_IDS},
-    models::gas_prices::{GasPrice, GasResponse},
-    Data, Error,
-};
+use crate::constants::gas_prices::{GAS_PRICES_ENDPOINT, RELEVANT_GAS_IDS};
+use crate::models::gas_prices::{GasPrice, GasResponse};
+use crate::{Data, Error};
 
 #[tracing::instrument(skip_all)]
 pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
@@ -68,7 +66,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 any_updates = true;
 
                 sqlx::query!(
-                    r#"
+					r#"
                         INSERT INTO
                             gas_prices (id, gas_name, zone1_price, zone2_price, last_modified)
                         VALUES
@@ -79,17 +77,17 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                             zone2_price = excluded.zone2_price,
                             last_modified = excluded.last_modified;
                     "#,
-                    new_gas.id,
-                    new_gas.gas_name,
-                    new_gas.zone1_price,
-                    new_gas.zone2_price,
-                    new_gas.last_modified,
-                )
-                .execute(&data.db)
-                .await
-                .inspect_err(|e| {
-                    tracing::error!(err = ?e, "an error occurred when inserting new gas data into db")
-                })?;
+					new_gas.id,
+					new_gas.gas_name,
+					new_gas.zone1_price,
+					new_gas.zone2_price,
+					new_gas.last_modified,
+				)
+				.execute(&data.db)
+				.await
+				.inspect_err(
+					|e| tracing::error!(err = ?e, "an error occurred when inserting new gas data into db"),
+				)?;
 
                 let zone1_diff = new_gas.zone1_price - current_gas.zone1_price;
                 let zone2_diff = new_gas.zone2_price - current_gas.zone2_price;
@@ -139,7 +137,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 tracing::info!(id = %new_gas.id, gas_name = %new_gas.gas_name, "got new price update for gas");
 
                 sqlx::query!(
-                    r#"
+					r#"
                         INSERT INTO
                             gas_prices (id, gas_name, zone1_price, zone2_price, last_modified)
                         VALUES
@@ -150,17 +148,17 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                             zone2_price = excluded.zone2_price,
                             last_modified = excluded.last_modified;
                     "#,
-                    new_gas.id,
-                    new_gas.gas_name,
-                    new_gas.zone1_price,
-                    new_gas.zone2_price,
-                    new_gas.last_modified,
-                )
-                .execute(&data.db)
-                .await
-                .inspect_err(|e| {
-                    tracing::error!(err = ?e, "an error occurred when inserting gas data into db")
-                })?;
+					new_gas.id,
+					new_gas.gas_name,
+					new_gas.zone1_price,
+					new_gas.zone2_price,
+					new_gas.last_modified,
+				)
+				.execute(&data.db)
+				.await
+				.inspect_err(
+					|e| tracing::error!(err = ?e, "an error occurred when inserting gas data into db"),
+				)?;
 
                 let gas_price_string = format!(
                     "- Vùng 1: {}đ/lít\n- Vùng 2: {}đ/lít",

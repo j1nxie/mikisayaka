@@ -1,12 +1,12 @@
-use crate::constants::embeds::PIXIV_LEGACY_REGEX;
-use crate::Data;
-use crate::{
-    constants::embeds::{PIXIV_ARTWORK_URL_REGEX, PIXIV_SHORT_URL_REGEX},
-    models::songlink::SonglinkResponse,
-};
 use anyhow::Result;
 use fancy_regex::Captures;
 use poise::serenity_prelude::{self as serenity, *};
+
+use crate::Data;
+use crate::constants::embeds::{
+    PIXIV_ARTWORK_URL_REGEX, PIXIV_LEGACY_REGEX, PIXIV_SHORT_URL_REGEX,
+};
+use crate::models::songlink::SonglinkResponse;
 
 async fn send_replacement_and_suppress(
     ctx: &serenity::Context,
@@ -183,19 +183,20 @@ pub async fn md_handler(
                 )?;
 
             // FIXME: better error handling here
-            // this currently silently errors and hangs instead of returning - the message will just hang at "fetching data...".
+            // this currently silently errors and hangs instead of returning - the message will just
+            // hang at "fetching data...".
             let manga = data
-                        .md
-                        .as_ref()
-                        .unwrap()
-                        .manga()
-                        .id(uuid)
-                        .get()
-                        .send()
-                        .await
-                        .inspect_err(
-                            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
-                        )?;
+				.md
+				.as_ref()
+				.unwrap()
+				.manga()
+				.id(uuid)
+				.get()
+				.send()
+				.await
+				.inspect_err(
+					|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+				)?;
 
             let manga_id = manga.data.id;
             let manga = manga.data.attributes;
@@ -237,18 +238,18 @@ pub async fn md_handler(
             };
 
             let statistics = data
-                        .md
-                        .as_ref()
-                        .unwrap()
-                        .statistics()
-                        .manga()
-                        .id(uuid)
-                        .get()
-                        .send()
-                        .await
-                        .inspect_err(
-                            |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
-                        )?;
+				.md
+				.as_ref()
+				.unwrap()
+				.statistics()
+				.manga()
+				.id(uuid)
+				.get()
+				.send()
+				.await
+				.inspect_err(
+					|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+				)?;
 
             let statistics = statistics.statistics.get(&uuid).unwrap();
 
