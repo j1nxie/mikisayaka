@@ -1,15 +1,12 @@
 use reqwest::header::{
-    HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, CONNECTION, COOKIE, ORIGIN, REFERER,
+    ACCEPT, ACCEPT_ENCODING, CONNECTION, COOKIE, HeaderMap, HeaderValue, ORIGIN, REFERER,
     USER_AGENT,
 };
 
-use crate::{
-    constants::zenless::{HOYOLAB_API_BASE, USER_AGENT_STR, ZZZ_ACT_ID},
-    models::zenless::{
-        daily::{DailyReward, DailyRewardStatus},
-        HoyolabResponse,
-    },
-};
+use crate::constants::zenless::{HOYOLAB_API_BASE, USER_AGENT_STR, ZZZ_ACT_ID};
+use crate::models::zenless::HoyolabResponse;
+use crate::models::zenless::daily::{DailyReward, DailyRewardStatus};
+use crate::models::zenless::geetest::GeetestResponse;
 
 #[derive(Clone)]
 pub struct ZenlessClient {
@@ -107,7 +104,7 @@ impl ZenlessClient {
     pub async fn claim_daily_reward(
         &self,
         cookie: &str,
-    ) -> anyhow::Result<HoyolabResponse<DailyReward>> {
+    ) -> anyhow::Result<HoyolabResponse<GeetestResponse>> {
         let resp = self
             .client
             .post(HOYOLAB_API_BASE.to_owned() + "/event/luna/zzz/os/sign")
