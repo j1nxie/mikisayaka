@@ -17,6 +17,7 @@ struct Data {
     gas_prices_channel_id: Option<ChannelId>,
     manga_update_channel_id: Option<ChannelId>,
     music_channel_id: Option<ChannelId>,
+    zzz_daily_result_channel_id: Option<ChannelId>,
     reqwest_client: reqwest::Client,
     zenless_client: ZenlessClient,
     db: Pool<Sqlite>,

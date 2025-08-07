@@ -1,12 +1,14 @@
+use poise::serenity_prelude::*;
 use reqwest::header::{
     ACCEPT, ACCEPT_ENCODING, CONNECTION, COOKIE, HeaderMap, HeaderValue, ORIGIN, REFERER,
     USER_AGENT,
 };
 
 use crate::constants::zenless::{HOYOLAB_API_BASE, USER_AGENT_STR, ZZZ_ACT_ID};
-use crate::models::zenless::HoyolabResponse;
 use crate::models::zenless::daily::{DailyReward, DailyRewardStatus};
 use crate::models::zenless::geetest::GeetestResponse;
+use crate::models::zenless::{HoyolabAccount, HoyolabResponse, ZenlessReturnCode};
+use crate::{Data, Error};
 
 #[derive(Clone)]
 pub struct ZenlessClient {
@@ -126,4 +128,92 @@ impl ZenlessClient {
 
         Ok(body)
     }
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn scheduled_claim_daily_reward(http: &Http, data: &Data) -> Result<(), Error> {
+    tracing::info!("started claiming ZZZ daily reward!");
+
+    let accounts = sqlx::query_as!(
+        HoyolabAccount,
+        r#"
+            SELECT
+                id as "id!", user_id, hoyolab_token
+            FROM
+                hoyolab_accounts;
+        "#,
+    )
+    .fetch_all(&data.db)
+    .await
+    .inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when fetching cookie from database"),
+    )?;
+
+    if accounts.is_empty() {
+        tracing::info!("no HoyoLab accounts were configured, exiting");
+
+        return Ok(());
+    }
+
+    let tasks: Vec<_> = accounts
+        .iter()
+        .map(|account| {
+            data.zenless_client
+                .claim_daily_reward(&account.hoyolab_token)
+        })
+        .collect();
+
+    let results = futures::future::join_all(tasks).await;
+
+    if let Some(channel_id) = data.zzz_daily_result_channel_id {
+        let mut resp_str = String::from("today's daily claim status:\n");
+
+        for (idx, (account, result)) in accounts.iter().zip(results.iter()).enumerate() {
+            match result {
+                // got response, not sure whether success or failure on the API side
+                Ok(resp) => {
+                    match resp.is_success() {
+                        // API response is good
+                        true => {
+                            resp_str += &format!(
+                                "{}. <@{}>: daily reward claimed successfully.",
+                                idx + 1,
+                                account.user_id
+                            );
+                        }
+                        // some non-zero return code happened
+                        false => {
+                            if resp.retcode == ZenlessReturnCode::AlreadyClaimed {
+                                resp_str += &format!(
+                                    "{}. <@{}>: you've already claimed your daily reward for \
+                                     today.",
+                                    idx + 1,
+                                    account.user_id
+                                );
+                            } else {
+                                resp_str += &format!(
+                                    "{}. <@{}>: an error occurred while claiming your daily \
+                                     reward. please try claiming manually using `s>zzz daily`.",
+                                    idx + 1,
+                                    account.user_id
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(err = ?e, "an error occurred when sending daily claim request");
+                }
+            }
+        }
+
+        channel_id
+            .send_message(&http, CreateMessage::default().content(resp_str))
+            .await
+            .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending reply"))?;
+    }
+
+    tracing::info!("finished claiming ZZZ daily reward!");
+
+    Ok(())
 }

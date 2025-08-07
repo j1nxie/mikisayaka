@@ -7,11 +7,11 @@ use mangadex_api_types_rust::{Password, Username};
 use poise::serenity_prelude::{self as serenity, *};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{Pool, Sqlite};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime, Time, UtcOffset};
 use tracing::Instrument;
 
 use crate::constants::version::get_version;
-use crate::zenless::ZenlessClient;
+use crate::zenless::{self, ZenlessClient};
 use crate::{Data, chapter_tracker, commands, event_handler, gas_prices, telemetry};
 
 async fn init_database() -> anyhow::Result<Pool<Sqlite>> {
@@ -83,7 +83,12 @@ async fn init_md() -> anyhow::Result<Option<MangaDexClient>> {
     Ok(md)
 }
 
-fn init_channel_ids() -> (Option<ChannelId>, Option<ChannelId>, Option<ChannelId>) {
+fn init_channel_ids() -> (
+    Option<ChannelId>,
+    Option<ChannelId>,
+    Option<ChannelId>,
+    Option<ChannelId>,
+) {
     let manga_update_channel_id = std::env::var("MANGA_UPDATE_CHANNEL_ID")
         .ok()
         .and_then(|id| id.parse::<u64>().ok())
@@ -123,10 +128,26 @@ fn init_channel_ids() -> (Option<ChannelId>, Option<ChannelId>, Option<ChannelId
         tracing::warn!("no channel id found for gas prices updates. they will not be sent.");
     }
 
+    let zzz_daily_result_channel_id = std::env::var("ZZZ_DAILY_RESULT_CHANNEL_ID")
+        .ok()
+        .and_then(|id| id.parse::<u64>().ok())
+        .map(|id| {
+            tracing::info!(
+                "sending ZZZ daily reward notifications to channel with id {}.",
+                id
+            );
+            ChannelId::new(id)
+        });
+
+    if manga_update_channel_id.is_none() {
+        tracing::warn!("no manga update channel id found. mangadex links will not be watched.");
+    }
+
     (
         manga_update_channel_id,
         music_channel_id,
         gas_prices_channel_id,
+        zzz_daily_result_channel_id,
     )
 }
 
@@ -172,10 +193,10 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
             Box::pin(
                 async move {
                     poise::builtins::register_globally(ctx, &framework.options().commands)
-						.await
-						.inspect_err(
-							|e| tracing::error!(err = ?e, "an error occurred when registering commands"),
-						)?;
+                        .await
+                        .inspect_err(
+                            |e| tracing::error!(err = ?e, "an error occurred when registering commands"),
+                        )?;
 
                     Ok(data)
                 }
@@ -200,8 +221,11 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
 fn spawn_background_tasks(client: &Client, data: &Data) {
     let md_data = data.clone();
     let gas_data = data.clone();
+    let zzz_data = data.clone();
+
     let md_http = client.http.clone();
     let gas_http = client.http.clone();
+    let zzz_http = client.http.clone();
 
     if md_data.md.is_some() {
         tracing::info!("initialized chapter tracker!");
@@ -238,6 +262,39 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
         }
         .in_current_span(),
     );
+
+    tokio::spawn(
+        async move {
+            let target_time = Time::MIDNIGHT;
+            let gmt8_offset = UtcOffset::from_hms(8, 0, 0).unwrap();
+
+            loop {
+                let now_gmt8 = OffsetDateTime::now_utc().to_offset(gmt8_offset);
+                let today = now_gmt8.date();
+
+                let mut next_run = today.with_time(target_time).assume_offset(gmt8_offset);
+
+                if next_run <= now_gmt8 {
+                    next_run += Duration::days(1);
+                }
+
+                let next_run_gmt7 = next_run.to_offset(UtcOffset::from_hms(7, 0, 0).unwrap());
+
+                tracing::info!(
+                    "next ZZZ daily reward claim scheduled for: {} (GMT+7)",
+                    next_run_gmt7
+                );
+
+                let duration_until_next = (next_run - now_gmt8).unsigned_abs();
+
+                tokio::time::sleep(duration_until_next).await;
+
+                tracing::info!("running ZZZ daily reward claim!");
+                let _ = zenless::scheduled_claim_daily_reward(&zzz_http, &zzz_data).await;
+            }
+        }
+        .in_current_span(),
+    );
 }
 
 pub async fn init() -> anyhow::Result<Client> {
@@ -250,7 +307,12 @@ pub async fn init() -> anyhow::Result<Client> {
     let db = init_database().await?;
     let md = init_md().await?;
     let mdlist_id = init_mdlist_id();
-    let (manga_update_channel_id, music_channel_id, gas_prices_channel_id) = init_channel_ids();
+    let (
+        manga_update_channel_id,
+        music_channel_id,
+        gas_prices_channel_id,
+        zzz_daily_result_channel_id,
+    ) = init_channel_ids();
     let reqwest_client = reqwest::Client::new();
     let zenless_client = ZenlessClient::new();
 
@@ -258,6 +320,7 @@ pub async fn init() -> anyhow::Result<Client> {
         gas_prices_channel_id,
         manga_update_channel_id,
         music_channel_id,
+        zzz_daily_result_channel_id,
         reqwest_client,
         zenless_client,
         db,
