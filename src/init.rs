@@ -10,6 +10,7 @@ use sqlx::{Pool, Sqlite};
 use time::OffsetDateTime;
 use tracing::Instrument;
 
+use crate::constants::version::get_version;
 use crate::zenless::ZenlessClient;
 use crate::{Data, chapter_tracker, commands, event_handler, gas_prices, telemetry};
 
@@ -267,6 +268,6 @@ pub async fn init() -> anyhow::Result<Client> {
     let client = init_discord_client(&token, data.clone()).await?;
     spawn_background_tasks(&client, &data);
 
-    tracing::info!("finished initializing!");
+    tracing::info!("finished initializing Miki Sayaka, {}!", get_version());
     Ok(client)
 }
