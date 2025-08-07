@@ -9,7 +9,7 @@ on:
       - ".dockerignore"
       - "Dockerfile"
       - ".github/workflows/docker-image.yml"
-      - ".sqlx"
+      - ".sqlx/*.json"
     branches:
       - "main"
     tags:
