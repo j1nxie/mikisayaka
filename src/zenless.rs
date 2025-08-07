@@ -197,7 +197,7 @@ pub async fn scheduled_claim_daily_reward(http: &Http, data: &Data) -> Result<()
                                 idx + 1,
                                 account.user_id
                             );
-                            tracing::error!(err = ?e, user = %account.user_id, "an error occurred when claiming daily reward");
+                            tracing::error!(err = ?resp.retcode, user = %account.user_id, "an error occurred when claiming daily reward");
                         }
                     }
                 }
