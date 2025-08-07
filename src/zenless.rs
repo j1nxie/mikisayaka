@@ -165,48 +165,50 @@ pub async fn scheduled_claim_daily_reward(http: &Http, data: &Data) -> Result<()
 
     let results = futures::future::join_all(tasks).await;
 
-    if let Some(channel_id) = data.zzz_daily_result_channel_id {
-        let mut resp_str = String::from("today's daily claim status:\n");
+    let mut resp_str = String::from("today's daily claim status:\n");
 
-        for (idx, (account, result)) in accounts.iter().zip(results.iter()).enumerate() {
-            match result {
-                // got response, not sure whether success or failure on the API side
-                Ok(resp) => {
-                    match resp.is_success() {
-                        // API response is good
-                        true => {
+    for (idx, (account, result)) in accounts.iter().zip(results.iter()).enumerate() {
+        match result {
+            // got response, not sure whether success or failure on the API side
+            Ok(resp) => {
+                match resp.is_success() {
+                    // API response is good
+                    true => {
+                        resp_str += &format!(
+                            "{}. <@{}>: daily reward claimed successfully.",
+                            idx + 1,
+                            account.user_id
+                        );
+                        tracing::info!(user = %account.user_id, "automatically claimed daily reward");
+                    }
+                    // some non-zero return code happened
+                    false => {
+                        if resp.retcode == ZenlessReturnCode::AlreadyClaimed {
                             resp_str += &format!(
-                                "{}. <@{}>: daily reward claimed successfully.",
+                                "{}. <@{}>: you've already claimed your daily reward for today.",
                                 idx + 1,
                                 account.user_id
                             );
-                        }
-                        // some non-zero return code happened
-                        false => {
-                            if resp.retcode == ZenlessReturnCode::AlreadyClaimed {
-                                resp_str += &format!(
-                                    "{}. <@{}>: you've already claimed your daily reward for \
-                                     today.",
-                                    idx + 1,
-                                    account.user_id
-                                );
-                            } else {
-                                resp_str += &format!(
-                                    "{}. <@{}>: an error occurred while claiming your daily \
-                                     reward. please try claiming manually using `s>zzz daily`.",
-                                    idx + 1,
-                                    account.user_id
-                                );
-                            }
+                            tracing::warn!(user = %account.user_id, "user has already claimed daily reward");
+                        } else {
+                            resp_str += &format!(
+                                "{}. <@{}>: an error occurred while claiming your daily reward. \
+                                 please try claiming manually using `s>zzz daily`.",
+                                idx + 1,
+                                account.user_id
+                            );
+                            tracing::error!(err = ?e, user = %account.user_id, "an error occurred when claiming daily reward");
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::error!(err = ?e, "an error occurred when sending daily claim request");
-                }
+            }
+            Err(e) => {
+                tracing::error!(err = ?e, user = %account.user_id, "an error occurred when sending daily claim request");
             }
         }
+    }
 
+    if let Some(channel_id) = data.zzz_daily_result_channel_id {
         channel_id
             .send_message(&http, CreateMessage::default().content(resp_str))
             .await
