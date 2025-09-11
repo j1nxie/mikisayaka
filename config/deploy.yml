@@ -1,0 +1,59 @@
+service: mikisayaka
+image: j1nxie/mikisayaka
+
+servers:
+  web:
+    hosts:
+      - minimsv-1.tail7f901.ts.net
+    proxy: false
+
+registry:
+  server: ghcr.io
+  username: j1nxie
+
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+env:
+  clear:
+    DATABASE_URL: sqlite://database/database.db?mode=rwc
+    GAS_PRICES_CHANNEL_ID: <%= ENV['GAS_PRICES_CHANNEL_ID'] %>
+    MANGA_UPDATE_CHANNEL_ID: <%= ENV['MANGA_UPDATE_CHANNEL_ID'] %>
+    MUSIC_CHANNEL_ID: <%= ENV['MUSIC_CHANNEL_ID'] %>
+    ZZZ_DAILY_RESULT_CHANNEL_ID: <%= ENV['ZZZ_DAILY_RESULT_CHANNEL_ID'] %>
+    MANGADEX_MDLIST_ID: <%= ENV['MANGADEX_MDLIST_ID'] %>
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana-alloy:4317
+    OTEL_SERVICE_NAME: mikisayaka
+  secret:
+    - DISCORD_TOKEN
+    - MANGADEX_CLIENT_ID
+    - MANGADEX_CLIENT_SECRET
+    - MANGADEX_USERNAME
+    - MANGADEX_PASSWORD
+
+builder:
+  arch: amd64
+  args:
+    GIT_SHA: <%= `git rev-parse HEAD`.strip %>
+
+boot:
+  limit: 1
+
+volumes:
+  - /mnt/sdb1/mikisayaka/database:/app/database:rw
+
+accessories:
+  grafana-alloy:
+    host: minimsv-1.tail7f901.ts.net
+    image: grafana/alloy:latest
+    service: grafana-alloy
+    env:
+      clear:
+        ALLOY_LOG_LEVEL: info
+      secret:
+        - GCLOUD_RW_API_KEY
+        - GCLOUD_FM_COLLECTOR_ID
+    volumes:
+      - /mnt/sdb1/mikisayaka/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log:/var/log:rw
+    cmd: "run /etc/alloy/config.alloy --server.http.listen-addr=0.0.0.0:12345 --storage.path=/tmp/alloy --stability.level=public-preview"

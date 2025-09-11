@@ -10,6 +10,8 @@ on:
       - "Dockerfile"
       - ".github/workflows/docker-image.yml"
       - ".sqlx/*.json"
+      - ".kamal/secrets"
+      - "config/deploy.yml"
     branches:
       - "main"
     tags:
@@ -54,3 +56,57 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Install Kamal
+        run: gem install kamal
+
+      - name: Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy with Kamal
+        env:
+          VERSION: main
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+          GAS_PRICES_CHANNEL_ID: ${{ vars.GAS_PRICES_CHANNEL_ID }}
+          MANGA_UPDATE_CHANNEL_ID: ${{ vars.MANGA_UPDATE_CHANNEL_ID }}
+          MUSIC_CHANNEL_ID: ${{ vars.MUSIC_CHANNEL_ID }}
+          ZZZ_DAILY_RESULT_CHANNEL_ID: ${{ vars.ZZZ_DAILY_RESULT_CHANNEL_ID }}
+          MANGADEX_MDLIST_ID: ${{ vars.MANGADEX_MDLIST_ID }}
+
+          MANGADEX_CLIENT_ID: ${{ secrets.MANGADEX_CLIENT_ID }}
+          MANGADEX_CLIENT_SECRET: ${{ secrets.MANGADEX_CLIENT_SECRET }}
+          MANGADEX_USERNAME: ${{ secrets.MANGADEX_USERNAME }}
+          MANGADEX_PASSWORD: ${{ secrets.MANGADEX_PASSWORD }}
+
+          TAILSCALE_HOST: ${{ secrets.TAILSCALE_HOST }}
+
+          GCLOUD_RW_API_KEY: ${{ secrets.GCLOUD_RW_API_KEY }}
+          GCLOUD_FM_COLLECTOR_ID: ${{ secrets.GCLOUD_FM_COLLECTOR_ID }}
+        run: kamal deploy --skip-push
