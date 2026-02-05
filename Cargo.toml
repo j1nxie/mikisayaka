@@ -34,7 +34,7 @@ sqlx = { version = "0.8.3", features = [
     "time",
 ] }
 thousands = "0.2.0"
-time = { version = "0.3.36", features = [
+time = { version = "0.3.47", features = [
     "formatting",
     "serde",
     "local-offset",
