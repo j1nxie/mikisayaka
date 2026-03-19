@@ -37,7 +37,9 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
             |e| tracing::error!(err = ?e, "an error occurred when fetching gas prices from API"),
         )?;
 
-    let resp: GasResponse = resp.json().await.unwrap();
+    let resp: GasResponse = resp.json().await.inspect_err(
+        |e| tracing::error!(err = ?e, "an error occurred when decoding gas prices response"),
+    )?;
 
     let changes: Vec<_> = resp
         .objects
