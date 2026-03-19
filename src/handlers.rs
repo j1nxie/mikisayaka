@@ -368,7 +368,7 @@ pub async fn tiktok_handler(
 ) -> Result<()> {
     let id = &captures[1];
 
-    let replacement_url = format!("https://vxtiktok.com/{id}");
+    let replacement_url = format!("https://kktiktok.com/{id}");
 
     return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
 }
