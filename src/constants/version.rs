@@ -15,6 +15,20 @@ const MADOKA_MAGICA: [&str; 12] = [
     "My Very Best Friend",
 ];
 
+pub fn get_log_version() -> String {
+    let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
+    let mut git_sha = env!("VERGEN_GIT_SHA").to_string();
+
+    git_sha.truncate(7);
+
+    if let Ok(semver) = semver {
+        format!("v{} - {} [{}]", semver, MADOKA_MAGICA[7], git_sha,)
+    } else {
+        tracing::warn!("couldn't parse a semver out of Cargo.toml? defaulting to 0.0.0-unknown.");
+        String::from("v0.0.0-unknown - No Version Name")
+    }
+}
+
 pub fn get_version() -> String {
     let semver = env!("CARGO_PKG_VERSION").parse::<Version>();
     let mut git_sha = env!("VERGEN_GIT_SHA").to_string();

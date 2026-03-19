@@ -13,7 +13,7 @@ futures = "0.3.31"
 mangadex-api = { git = "https://github.com/j1nxie/mangadex-api" }
 mangadex-api-schema-rust = { git = "https://github.com/j1nxie/mangadex-api" }
 mangadex-api-types-rust = { git = "https://github.com/j1nxie/mangadex-api" }
-poise = { version = "0.6.1", features = ["cache"] }
+poise = { git = "https://github.com/serenity-rs/poise", features = ["cache"] }
 rand = "0.8.5"
 reqwest = { version = "0.12", default-features = false, features = [
     "http2",
