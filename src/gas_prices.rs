@@ -14,11 +14,11 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         GasPrice,
         r#"
             SELECT
-                id AS "id!: String",
-                gas_name,
-                zone1_price,
-                zone2_price,
-                last_modified
+            id AS "id!: String",
+            gas_name,
+            zone1_price,
+            zone2_price,
+            last_modified
             FROM gas_prices;
         "#
     )
@@ -66,7 +66,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 any_updates = true;
 
                 sqlx::query!(
-					r#"
+                    r#"
                         INSERT INTO
                             gas_prices (id, gas_name, zone1_price, zone2_price, last_modified)
                         VALUES
@@ -77,17 +77,17 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                             zone2_price = excluded.zone2_price,
                             last_modified = excluded.last_modified;
                     "#,
-					new_gas.id,
-					new_gas.gas_name,
-					new_gas.zone1_price,
-					new_gas.zone2_price,
-					new_gas.last_modified,
-				)
-				.execute(&data.db)
-				.await
-				.inspect_err(
-					|e| tracing::error!(err = ?e, "an error occurred when inserting new gas data into db"),
-				)?;
+                    new_gas.id,
+                    new_gas.gas_name,
+                    new_gas.zone1_price,
+                    new_gas.zone2_price,
+                    new_gas.last_modified,
+                )
+                .execute(&data.db)
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when inserting new gas data into db"),
+                )?;
 
                 let zone1_diff = new_gas.zone1_price - current_gas.zone1_price;
                 let zone2_diff = new_gas.zone2_price - current_gas.zone2_price;
@@ -137,7 +137,7 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                 tracing::info!(id = %new_gas.id, gas_name = %new_gas.gas_name, "got new price update for gas");
 
                 sqlx::query!(
-					r#"
+                    r#"
                         INSERT INTO
                             gas_prices (id, gas_name, zone1_price, zone2_price, last_modified)
                         VALUES
@@ -148,17 +148,17 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
                             zone2_price = excluded.zone2_price,
                             last_modified = excluded.last_modified;
                     "#,
-					new_gas.id,
-					new_gas.gas_name,
-					new_gas.zone1_price,
-					new_gas.zone2_price,
-					new_gas.last_modified,
-				)
-				.execute(&data.db)
-				.await
-				.inspect_err(
-					|e| tracing::error!(err = ?e, "an error occurred when inserting gas data into db"),
-				)?;
+                    new_gas.id,
+                    new_gas.gas_name,
+                    new_gas.zone1_price,
+                    new_gas.zone2_price,
+                    new_gas.last_modified,
+                )
+                .execute(&data.db)
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, "an error occurred when inserting gas data into db"),
+                )?;
 
                 let gas_price_string = format!(
                     "- Vùng 1: {}đ/lít\n- Vùng 2: {}đ/lít",
@@ -180,9 +180,10 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         }
     }
 
-    if any_updates && data.gas_prices_channel_id.is_some() {
-        data.gas_prices_channel_id
-            .unwrap()
+    if let Some(gas_prices_channel_id) = data.gas_prices_channel_id
+        && any_updates
+    {
+        gas_prices_channel_id
             .send_message(&http, CreateMessage::new().add_embed(gas_embed))
             .await
             .inspect_err(|e| tracing::error!(err = ?e, "an error occurred when sending message"))?;

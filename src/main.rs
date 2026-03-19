@@ -64,10 +64,10 @@ async fn event_handler(
             }
         }
 
-        if new_message.channel_id == data.manga_update_channel_id.unwrap() {
-            if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content) {
-                md_handler(ctx, data, new_message, captures).await?;
-            }
+        if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content)
+            && new_message.channel_id == data.manga_update_channel_id.unwrap()
+        {
+            md_handler(ctx, data, new_message, captures).await?;
         }
 
         if let Ok(Some(captures)) = TWITTER_URL_REGEX.captures(&new_message.content) {

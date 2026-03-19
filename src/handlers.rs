@@ -186,17 +186,17 @@ pub async fn md_handler(
             // this currently silently errors and hangs instead of returning - the message will just
             // hang at "fetching data...".
             let manga = data
-				.md
-				.as_ref()
-				.unwrap()
-				.manga()
-				.id(uuid)
-				.get()
-				.send()
-				.await
-				.inspect_err(
-					|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
-				)?;
+                .md
+                .as_ref()
+                .unwrap()
+                .manga()
+                .id(uuid)
+                .get()
+                .send()
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga"),
+                )?;
 
             let manga_id = manga.data.id;
             let manga = manga.data.attributes;
@@ -238,18 +238,18 @@ pub async fn md_handler(
             };
 
             let statistics = data
-				.md
-				.as_ref()
-				.unwrap()
-				.statistics()
-				.manga()
-				.id(uuid)
-				.get()
-				.send()
-				.await
-				.inspect_err(
-					|e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
-				)?;
+                .md
+                .as_ref()
+                .unwrap()
+                .statistics()
+                .manga()
+                .id(uuid)
+                .get()
+                .send()
+                .await
+                .inspect_err(
+                    |e| tracing::error!(err = ?e, uuid = %uuid, "an error occurred when fetching manga stats"),
+                )?;
 
             let statistics = statistics.statistics.get(&uuid).unwrap();
 
@@ -423,15 +423,15 @@ pub async fn quote_handler(
     let title = new_message.content.trim_start_matches("... ");
     let result = sqlx::query!(
         r#"
-                SELECT DISTINCT
-                    q.id, q.title, q.content
-                FROM
-                    quotes q
-                LEFT JOIN
-                    quote_aliases qa ON q.id = qa.quote_id
-                WHERE
-                    q.title = $1 OR qa.alias = $1;
-            "#,
+            SELECT DISTINCT
+                q.id, q.title, q.content
+            FROM
+                quotes q
+            LEFT JOIN
+                quote_aliases qa ON q.id = qa.quote_id
+            WHERE
+                q.title = $1 OR qa.alias = $1;
+        "#,
         title,
     )
     .fetch_optional(&data.db)
