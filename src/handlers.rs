@@ -415,6 +415,18 @@ pub async fn pixiv_handler(ctx: &serenity::Context, new_message: &Message) -> Re
     Ok(())
 }
 
+pub async fn facebook_handler(
+    ctx: &serenity::Context,
+    new_message: &Message,
+    captures: Captures<'_>,
+) -> Result<()> {
+    let id = &captures[1];
+
+    let replacement_url = format!("https://facebed.com/{id}");
+
+    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+}
+
 pub async fn quote_handler(
     ctx: &serenity::Context,
     data: &Data,

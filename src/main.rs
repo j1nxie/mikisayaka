@@ -5,10 +5,10 @@ use mangadex_api::MangaDexClient;
 use poise::serenity_prelude::{self as serenity, *};
 use sqlx::{Pool, Sqlite};
 
-use crate::constants::embeds::{TIKTOK_URL_REGEX, TWITTER_URL_REGEX};
+use crate::constants::embeds::{FACEBOOK_URL_REGEX, TIKTOK_URL_REGEX, TWITTER_URL_REGEX};
 use crate::handlers::{
-    md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler, twitter_handler,
-    youtube_handler,
+    facebook_handler, md_handler, pixiv_handler, quote_handler, spotify_handler, tiktok_handler,
+    twitter_handler, youtube_handler,
 };
 use crate::zenless::ZenlessClient;
 
@@ -76,6 +76,10 @@ async fn event_handler(
 
         if let Ok(Some(captures)) = TIKTOK_URL_REGEX.captures(&new_message.content) {
             tiktok_handler(ctx, new_message, captures).await?;
+        }
+
+        if let Ok(Some(captures)) = FACEBOOK_URL_REGEX.captures(&new_message.content) {
+            facebook_handler(ctx, new_message, captures).await?;
         }
 
         if new_message.content.starts_with("... ") {

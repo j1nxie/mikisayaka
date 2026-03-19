@@ -22,3 +22,6 @@ pub static PIXIV_SHORT_URL_REGEX: LazyLock<Regex> =
 pub static PIXIV_LEGACY_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"https?://(?:www\.)?pixiv\.net/member_illust\.php\?illust_id=(\d+)").unwrap()
 });
+
+pub static FACEBOOK_URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"https?://(?:www\.)?facebook\.com/(.*)").unwrap());
