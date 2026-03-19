@@ -14,11 +14,11 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
         GasPrice,
         r#"
             SELECT
-            id AS "id!: String",
+                id AS "id!: String",
             gas_name,
-            zone1_price,
-            zone2_price,
-            last_modified
+                zone1_price,
+                zone2_price,
+                last_modified
             FROM gas_prices;
         "#
     )
@@ -135,6 +135,8 @@ pub async fn gas_prices(http: &Http, data: &Data) -> Result<(), Error> {
             }
             None => {
                 tracing::info!(id = %new_gas.id, gas_name = %new_gas.gas_name, "got new price update for gas");
+
+                any_updates = true;
 
                 sqlx::query!(
                     r#"

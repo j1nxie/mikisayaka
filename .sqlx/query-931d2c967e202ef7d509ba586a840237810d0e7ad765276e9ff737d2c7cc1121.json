@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n            id AS \"id!: String\",\n            gas_name,\n            zone1_price,\n            zone2_price,\n            last_modified\n            FROM gas_prices;\n        ",
+  "query": "\n            SELECT\n                id AS \"id!: String\",\n            gas_name,\n                zone1_price,\n                zone2_price,\n                last_modified\n            FROM gas_prices;\n        ",
   "describe": {
     "columns": [
       {
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "f0e0ca51b68d3b1114d43d3c20cec616347f2ce54ec88f638d038758e8f2cbb7"
+  "hash": "931d2c967e202ef7d509ba586a840237810d0e7ad765276e9ff737d2c7cc1121"
 }
