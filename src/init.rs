@@ -242,7 +242,7 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
 
                 task.for_each(|_| async {}).await;
             }
-            .in_current_span(),
+            .instrument(tracing::info_span!("chapter_tracker_task")),
         );
     }
 
@@ -260,7 +260,7 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
 
             task.for_each(|_| async {}).await;
         }
-        .in_current_span(),
+        .instrument(tracing::info_span!("gas_prices_task")),
     );
 
     tokio::spawn(
@@ -293,7 +293,7 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
                 let _ = zenless::scheduled_claim_daily_reward(&zzz_http, &zzz_data).await;
             }
         }
-        .in_current_span(),
+        .instrument(tracing::info_span!("zzz_daily_task")),
     );
 }
 
