@@ -174,7 +174,6 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
                 commands::gas_prices::gas_prices(),
                 commands::help::help(),
                 commands::status::status(),
-                commands::role::role(),
                 commands::fluff::quartatrice(),
                 commands::fluff::itl(),
                 commands::manga::manga(),
