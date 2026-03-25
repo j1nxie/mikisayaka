@@ -25,3 +25,6 @@ pub static PIXIV_LEGACY_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 pub static FACEBOOK_URL_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"https?://(?:www\.)?facebook\.com/(.*)").unwrap());
+
+pub static REDDIT_URL_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"https?://(?:www\.|old\.)?reddit\.com/(.*)").unwrap());

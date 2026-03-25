@@ -427,6 +427,18 @@ pub async fn facebook_handler(
     return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
 }
 
+pub async fn reddit_handler(
+    ctx: &serenity::Context,
+    new_message: &Message,
+    captures: Captures<'_>,
+) -> Result<()> {
+    let rest = &captures[1];
+
+    let replacement_url = format!("https://old.rxddit.com/{rest}");
+
+    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
+}
+
 pub async fn quote_handler(
     ctx: &serenity::Context,
     data: &Data,
