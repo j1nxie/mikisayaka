@@ -4,12 +4,11 @@ a small Discord bot meant for housekeeping tasks in Rylie's Nazunacord!
 
 ## features
 
-- self-assignable roles
 - watch #weeb for mangadex links and automatically return data
 - maintain a list of manga for tracking new chapter updates
 - send notifications for new manga chapters
-- match Pixiv, Twitter and TikTok URLs and replies with their corresponding
-  embed URLs
+- match Facebook, Reddit, Pixiv, Twitter and TikTok URLs and replies with their
+corresponding embed URLs
 
 ## usage
 
