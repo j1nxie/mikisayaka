@@ -46,7 +46,9 @@ async fn event_handler(
             return Ok(());
         }
 
-        if new_message.channel_id == data.music_channel_id.unwrap() {
+        if let Some(music_channel_id) = data.music_channel_id
+            && new_message.channel_id == music_channel_id
+        {
             if let Ok(Some(captures)) = YOUTUBE_URL_REGEX.captures(&new_message.content) {
                 youtube_handler(ctx, data, new_message, captures).await?;
             }
