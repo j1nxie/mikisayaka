@@ -5,13 +5,7 @@ use mangadex_api::MangaDexClient;
 use poise::serenity_prelude::{self as serenity, *};
 use sqlx::{Pool, Sqlite};
 
-use crate::constants::embeds::{
-    FACEBOOK_URL_REGEX, REDDIT_URL_REGEX, TIKTOK_URL_REGEX, TWITTER_URL_REGEX,
-};
-use crate::handlers::{
-    facebook_handler, md_handler, pixiv_handler, quote_handler, reddit_handler, spotify_handler,
-    tiktok_handler, twitter_handler, youtube_handler,
-};
+use crate::handlers::{embed_handler, md_handler, quote_handler, spotify_handler, youtube_handler};
 use crate::zenless::ZenlessClient;
 
 #[derive(Clone)]
@@ -72,27 +66,11 @@ async fn event_handler(
             md_handler(ctx, data, new_message, captures).await?;
         }
 
-        if let Ok(Some(captures)) = TWITTER_URL_REGEX.captures(&new_message.content) {
-            twitter_handler(ctx, new_message, captures).await?;
-        }
-
-        if let Ok(Some(captures)) = TIKTOK_URL_REGEX.captures(&new_message.content) {
-            tiktok_handler(ctx, new_message, captures).await?;
-        }
-
-        if let Ok(Some(captures)) = FACEBOOK_URL_REGEX.captures(&new_message.content) {
-            facebook_handler(ctx, new_message, captures).await?;
-        }
-
-        if let Ok(Some(captures)) = REDDIT_URL_REGEX.captures(&new_message.content) {
-            reddit_handler(ctx, new_message, captures).await?;
-        }
+        embed_handler(ctx, data, new_message).await?;
 
         if new_message.content.starts_with("... ") {
             quote_handler(ctx, data, new_message).await?;
         }
-
-        pixiv_handler(ctx, new_message).await?;
     }
 
     Ok(())

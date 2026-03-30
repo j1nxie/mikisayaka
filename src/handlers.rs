@@ -1,12 +1,68 @@
+use std::sync::LazyLock;
+
 use anyhow::Result;
-use fancy_regex::Captures;
+use fancy_regex::{Captures, Regex};
 use poise::serenity_prelude::{self as serenity, *};
 
 use crate::Data;
-use crate::constants::embeds::{
-    PIXIV_ARTWORK_URL_REGEX, PIXIV_LEGACY_REGEX, PIXIV_SHORT_URL_REGEX,
-};
 use crate::models::songlink::SonglinkResponse;
+
+type UrlBuilder = Box<dyn Fn(&Captures<'_>) -> String + Send + Sync>;
+
+pub static EMBED_BUILDERS: LazyLock<Vec<(&'static Regex, UrlBuilder)>> = LazyLock::new(|| {
+    use crate::constants::embeds::*;
+
+    vec![
+        (
+            &*FACEBOOK_URL_REGEX,
+            Box::new(|c: &Captures| format!("https://www.facebook.com/{}", &c[1])),
+        ),
+        (
+            &*PIXIV_ARTWORK_URL_REGEX,
+            Box::new(|c: &Captures| {
+                let lang = c.name("lang").map_or("", |s| s.as_str());
+                let id = c.name("id").map_or("", |s| s.as_str());
+                let idx = c.name("idx").map_or("", |s| s.as_str());
+
+                let path = if lang.is_empty() {
+                    format!("artworks/{id}")
+                } else {
+                    format!("{lang}/artworks/{id}")
+                };
+
+                let path = if !idx.is_empty() {
+                    format!("{path}/{idx}")
+                } else {
+                    path
+                };
+
+                format!("https://phixiv.net/{path}")
+            }),
+        ),
+        (
+            &*PIXIV_LEGACY_REGEX,
+            Box::new(|c: &Captures| {
+                format!("https://phixiv.net/member_illust.php?illust_id={}", &c[1])
+            }),
+        ),
+        (
+            &*PIXIV_SHORT_URL_REGEX,
+            Box::new(|c: &Captures| format!("https://www.phixiv.net/i/{}", &c[1])),
+        ),
+        (
+            &*TWITTER_URL_REGEX,
+            Box::new(|c: &Captures| format!("https://fixupx.com/{}/status/{}", &c[2], &c[3])),
+        ),
+        (
+            &*TIKTOK_URL_REGEX,
+            Box::new(|c: &Captures| format!("https://kktiktok.com/{}", &c[1])),
+        ),
+        (
+            &*REDDIT_URL_REGEX,
+            Box::new(|c: &Captures| format!("https://old.rxddit.com/{}", &c[1])),
+        ),
+    ]
+});
 
 async fn send_replacement_and_suppress(
     ctx: &serenity::Context,
@@ -22,6 +78,20 @@ async fn send_replacement_and_suppress(
             EditMessage::new().suppress_embeds(true),
         )
         .await?;
+
+    Ok(())
+}
+
+pub async fn embed_handler(
+    ctx: &serenity::Context,
+    data: &Data,
+    new_message: &Message,
+) -> Result<()> {
+    for (regex, build_url) in EMBED_BUILDERS.iter() {
+        if let Ok(Some(captures)) = regex.captures(&new_message.content) {
+            send_replacement_and_suppress(ctx, new_message, build_url(&captures)).await?;
+        }
+    }
 
     Ok(())
 }
@@ -346,97 +416,6 @@ pub async fn md_handler(
     }
 
     Ok(())
-}
-
-pub async fn twitter_handler(
-    ctx: &serenity::Context,
-    new_message: &Message,
-    captures: Captures<'_>,
-) -> Result<()> {
-    let username = &captures[2];
-    let status_id = &captures[3];
-
-    let replacement_url = format!("https://fixupx.com/{username}/status/{status_id}");
-
-    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-}
-
-pub async fn tiktok_handler(
-    ctx: &serenity::Context,
-    new_message: &Message,
-    captures: Captures<'_>,
-) -> Result<()> {
-    let id = &captures[1];
-
-    let replacement_url = format!("https://kktiktok.com/{id}");
-
-    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-}
-
-pub async fn pixiv_handler(ctx: &serenity::Context, new_message: &Message) -> Result<()> {
-    if let Ok(Some(captures)) = PIXIV_ARTWORK_URL_REGEX.captures(&new_message.content) {
-        let lang = captures.name("lang").map_or("", |s| s.as_str());
-        let id = captures.name("id").map_or("", |s| s.as_str());
-        let idx = captures.name("idx").map_or("", |s| s.as_str());
-
-        let path = if lang.is_empty() {
-            format!("artworks/{id}")
-        } else {
-            format!("{lang}/artworks/{id}")
-        };
-
-        let path = if !idx.is_empty() {
-            format!("{path}/{idx}")
-        } else {
-            path
-        };
-
-        let replacement_url = format!("https://phixiv.net/{path}");
-
-        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-    }
-
-    if let Ok(Some(captures)) = PIXIV_SHORT_URL_REGEX.captures(&new_message.content) {
-        let id = &captures[1];
-
-        let replacement_url = format!("https://phixiv.net/i/{id}");
-
-        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-    }
-
-    if let Ok(Some(captures)) = PIXIV_LEGACY_REGEX.captures(&new_message.content) {
-        let id = &captures[1];
-
-        let replacement_url = format!("https://phixiv.net/member_illust.php?illust_id={id}");
-
-        return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-    }
-
-    Ok(())
-}
-
-pub async fn facebook_handler(
-    ctx: &serenity::Context,
-    new_message: &Message,
-    captures: Captures<'_>,
-) -> Result<()> {
-    let id = &captures[1];
-
-    let replacement_url = format!("https://facebed.com/{id}");
-
-    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
-}
-
-pub async fn reddit_handler(
-    ctx: &serenity::Context,
-    new_message: &Message,
-    captures: Captures<'_>,
-) -> Result<()> {
-    let rest = &captures[1];
-
-    let replacement_url = format!("https://old.rxddit.com/{rest}");
-
-    return send_replacement_and_suppress(ctx, new_message, replacement_url).await;
 }
 
 pub async fn quote_handler(
