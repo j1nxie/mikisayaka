@@ -42,11 +42,7 @@ async fn event_handler(
     data: &Data,
 ) -> Result<(), Error> {
     if let serenity::FullEvent::Message { new_message } = event {
-        if new_message.author.bot
-            || data.md.is_none()
-            || data.manga_update_channel_id.is_none()
-            || new_message.content.starts_with("s>")
-        {
+        if new_message.author.bot || new_message.content.starts_with("s>") {
             return Ok(());
         }
 
@@ -61,7 +57,9 @@ async fn event_handler(
         }
 
         if let Ok(Some(captures)) = MD_URL_REGEX.captures(&new_message.content)
-            && new_message.channel_id == data.manga_update_channel_id.unwrap()
+            && let Some(manga_channel_id) = data.manga_update_channel_id
+            && new_message.channel_id == manga_channel_id
+            && data.md.is_some()
         {
             md_handler(ctx, data, new_message, captures).await?;
         }
