@@ -15,7 +15,7 @@ pub static EMBED_BUILDERS: LazyLock<Vec<(&'static Regex, UrlBuilder)>> = LazyLoc
     vec![
         (
             &*FACEBOOK_URL_REGEX,
-            Box::new(|c: &Captures| format!("https://www.facebook.com/{}", &c[1])),
+            Box::new(|c: &Captures| format!("https://facebed.com/{}", &c[1])),
         ),
         (
             &*PIXIV_ARTWORK_URL_REGEX,
