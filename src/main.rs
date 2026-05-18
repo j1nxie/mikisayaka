@@ -68,9 +68,9 @@ async fn event_handler(
 
         embed_handler(ctx, data, new_message).await?;
 
-        if new_message.content.starts_with("... ") {
-            quote_handler(ctx, data, new_message).await?;
-        }
+        // if new_message.content.starts_with("... ") {
+        //     quote_handler(ctx, data, new_message).await?;
+        // }
     }
 
     Ok(())
