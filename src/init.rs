@@ -52,13 +52,12 @@ async fn init_md() -> anyhow::Result<Option<MangaDexClient>> {
     ) {
         (Ok(client_id), Ok(client_secret), Ok(username), Ok(password)) => {
             let md_client = MangaDexClient::default();
+            let mut client_info = ClientInfo::default();
 
-            md_client
-                .set_client_info(&ClientInfo {
-                    client_id,
-                    client_secret,
-                })
-                .await?;
+            client_info.client_id = client_id;
+            client_info.client_secret = client_secret;
+
+            md_client.set_client_info(&client_info).await?;
 
             tracing::info!("logging in to mangadex...");
             md_client
@@ -176,6 +175,7 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
                 commands::status::status(),
                 commands::fluff::quartatrice(),
                 commands::fluff::itl(),
+                commands::fluff::pick(),
                 commands::manga::manga(),
                 commands::quote::quote(),
             ],
