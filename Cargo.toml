@@ -13,7 +13,7 @@ futures = "0.3.31"
 mangadex-api = "4.2.1"
 mangadex-api-schema-rust = "1"
 mangadex-api-types-rust = "1"
-poise = { git = "https://github.com/serenity-rs/poise", features = ["cache"] }
+poise = { version = "0.6.2", features = ["cache"] }
 rand = "0.8.5"
 reqwest = { version = "0.12", default-features = false, features = [
   "http2",

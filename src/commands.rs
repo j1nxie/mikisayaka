@@ -6,6 +6,7 @@ pub mod help;
 pub mod manga;
 pub mod quote;
 pub mod status;
+pub mod translate;
 pub mod zenless;
 
 pub(crate) fn get_bot_avatar(ctx: Context<'_>) -> String {

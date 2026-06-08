@@ -169,6 +169,7 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
+                commands::translate::translate(),
                 commands::zenless::zenless(),
                 commands::gas_prices::gas_prices(),
                 commands::help::help(),

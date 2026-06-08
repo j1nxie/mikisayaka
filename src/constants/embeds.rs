@@ -6,6 +6,10 @@ pub static TWITTER_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"https?://(?:www\.)?(twitter\.com|x\.com)/([\w.-]+)/status/(\d+)").unwrap()
 });
 
+pub static FIXUPX_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"https?://(?:www\.)?(fixupx\.com)/([\w.-]+)/status/(\d+)(?!/en\b)").unwrap()
+});
+
 pub static TIKTOK_URL_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"https?://vt\.tiktok\.com/(\w+)").unwrap());
 
