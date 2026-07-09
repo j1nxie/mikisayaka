@@ -11,8 +11,9 @@ use time::{Duration, OffsetDateTime, Time, UtcOffset};
 use tracing::Instrument;
 
 use crate::constants::version::get_log_version;
+use crate::models::currency::CurrencyFromJPY;
 use crate::zenless::{self, ZenlessClient};
-use crate::{Data, chapter_tracker, commands, event_handler, gas_prices, telemetry};
+use crate::{Data, chapter_tracker, commands, currency, event_handler, gas_prices, telemetry};
 
 async fn init_database() -> anyhow::Result<Pool<Sqlite>> {
     let db_url = std::env::var("DATABASE_URL").expect("missing DATABASE_URL");
@@ -179,6 +180,7 @@ async fn init_discord_client(token: &str, data: Data) -> anyhow::Result<Client> 
                 commands::fluff::pick(),
                 commands::manga::manga(),
                 commands::quote::quote(),
+                commands::conversion::conversion(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("s>".into()),
@@ -222,11 +224,11 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
     let md_data = data.clone();
     let gas_data = data.clone();
     let zzz_data = data.clone();
+    let currency_rates_data = data.clone();
 
     let md_http = client.http.clone();
     let gas_http = client.http.clone();
     let zzz_http = client.http.clone();
-
     if md_data.md.is_some() {
         tracing::info!("initialized chapter tracker!");
 
@@ -294,6 +296,67 @@ fn spawn_background_tasks(client: &Client, data: &Data) {
             }
         }
         .instrument(tracing::info_span!("zzz_daily_task")),
+    );
+
+    tracing::info!("initialized currency rate tracker!");
+
+    tokio::spawn(
+        async move {
+            let latest = sqlx::query_as!(
+                CurrencyFromJPY,
+                r#"
+                    SELECT
+                        id AS "id!: String",
+                        date AS "date!: time::OffsetDateTime",
+                        vnd AS "vnd!: f32",
+                        usd AS "usd!: f32",
+                        eur AS "eur!: f32",
+                        gbp AS "gbp!: f32"
+                    FROM currency_rates
+                    ORDER BY date DESC
+                    LIMIT 1;
+                "#
+            )
+            .fetch_optional(&currency_rates_data.db)
+            .await;
+
+            match latest {
+                Ok(Some(latest)) if latest.date.date() == OffsetDateTime::now_utc().date() => {
+                    tracing::info!(
+                        "currency rates already up to date for today, skipping startup fetch!"
+                    );
+                }
+                Ok(_) => {
+                    let _ = currency::currency_rates(&currency_rates_data).await;
+                }
+                Err(e) => {
+                    tracing::error!(err = ?e, "an error occurred when checking latest currency rates");
+                    let _ = currency::currency_rates(&currency_rates_data).await;
+                }
+            }
+
+            loop {
+                let now = OffsetDateTime::now_utc().to_offset(UtcOffset::UTC);
+                let mut next_run = now
+                    .date()
+                    .with_time(Time::from_hms(12, 0, 0).expect("valid time"))
+                    .assume_offset(UtcOffset::UTC);
+
+                if next_run <= now {
+                    next_run += Duration::days(1);
+                }
+
+                let wait = (next_run - now).unsigned_abs();
+                tracing::info!(
+                    seconds = wait.as_secs(),
+                    "waiting until next currency rate fetch"
+                );
+                tokio::time::sleep(wait).await;
+
+                let _ = currency::currency_rates(&currency_rates_data).await;
+            }
+        }
+        .instrument(tracing::info_span!("currency_rates_task")),
     );
 }
 

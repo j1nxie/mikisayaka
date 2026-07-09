@@ -1,5 +1,6 @@
 use crate::Context;
 
+pub mod conversion;
 pub mod fluff;
 pub mod gas_prices;
 pub mod help;

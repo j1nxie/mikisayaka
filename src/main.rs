@@ -27,6 +27,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 mod chapter_tracker;
 mod commands;
 mod constants;
+mod currency;
 mod gas_prices;
 mod handlers;
 mod init;

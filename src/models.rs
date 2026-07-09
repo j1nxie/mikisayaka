@@ -1,3 +1,4 @@
+pub mod currency;
 pub mod gas_prices;
 pub mod manga;
 pub mod quotes;
