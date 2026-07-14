@@ -20,6 +20,6 @@ pub struct CurrencyFromJPY {
 
 #[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub struct AllRatesTodayResponse {
-    pub rate: f64,
+    pub rate: f32,
     pub source: String,
 }

@@ -9,7 +9,11 @@ use crate::{Data, Error};
 pub async fn currency_rates(data: &Data) -> Result<(), Error> {
     tracing::info!("started fetching new currency rates!");
 
-    let api_key = std::env::var("CONVERSION_API_TOKEN").expect("missing CONVERSION_API_TOKEN");
+    let Some(api_key) = &data.all_rates_today_api_key else {
+        tracing::warn!("missing CONVERSION_API_TOKEN, skipping currency rates fetch");
+        return Ok(());
+    };
+
     let now = OffsetDateTime::now_utc();
 
     let mut rates = CurrencyFromJPY {
@@ -39,10 +43,10 @@ pub async fn currency_rates(data: &Data) -> Result<(), Error> {
             )?;
 
         match target {
-            "VND" => rates.vnd = resp.rate as f32,
-            "USD" => rates.usd = resp.rate as f32,
-            "EUR" => rates.eur = resp.rate as f32,
-            "GBP" => rates.gbp = resp.rate as f32,
+            "VND" => rates.vnd = resp.rate,
+            "USD" => rates.usd = resp.rate,
+            "EUR" => rates.eur = resp.rate,
+            "GBP" => rates.gbp = resp.rate,
             _ => {}
         }
     }
