@@ -16,6 +16,10 @@ pub static MANGAHOT: LazyLock<uuid::Uuid> =
     LazyLock::new(|| uuid::Uuid::try_parse("319c1b10-cbd0-4f55-a46e-c4ee17e65139").unwrap());
 pub static MANGAPLUS: LazyLock<uuid::Uuid> =
     LazyLock::new(|| uuid::Uuid::try_parse("4f1de6a2-f0c5-4ac5-bce5-02c7dbb67deb").unwrap());
+pub static MANGAUP: LazyLock<uuid::Uuid> =
+    LazyLock::new(|| uuid::Uuid::try_parse("32908541-c7ec-40d4-b129-d4f0ce85884b").unwrap());
+pub static KMANGA: LazyLock<uuid::Uuid> =
+    LazyLock::new(|| uuid::Uuid::try_parse("7c5fb223-aa64-4eb8-955f-762d5bfd5ab7").unwrap());
 pub static MD_BLOCKED_LIST: LazyLock<Vec<uuid::Uuid>> = LazyLock::new(|| {
     vec![
         *AZUKI_MANGA,
@@ -24,5 +28,7 @@ pub static MD_BLOCKED_LIST: LazyLock<Vec<uuid::Uuid>> = LazyLock::new(|| {
         *INKR,
         *MANGAHOT,
         *MANGAPLUS,
+        *MANGAUP,
+        *KMANGA,
     ]
 });
