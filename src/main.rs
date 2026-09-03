@@ -14,6 +14,7 @@ struct Data {
     manga_update_channel_id: Option<ChannelId>,
     music_channel_id: Option<ChannelId>,
     zzz_daily_result_channel_id: Option<ChannelId>,
+    all_rates_today_api_key: Option<String>,
     reqwest_client: reqwest::Client,
     zenless_client: ZenlessClient,
     db: Pool<Sqlite>,
@@ -27,6 +28,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 mod chapter_tracker;
 mod commands;
 mod constants;
+mod currency;
 mod gas_prices;
 mod handlers;
 mod init;
